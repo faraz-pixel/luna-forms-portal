@@ -6,12 +6,14 @@ build/
 
 .env
 .env*.local
-
-# The root .gitignore has a bare `.env*`, which would otherwise swallow the
-# template too. It contains no secrets and must be committed.
-!.env.example
+.env*
 
 .vercel
 *.tsbuildinfo
 .DS_Store
 npm-debug.log*
+
+# Must stay LAST. The root .gitignore has a bare `.env*`, and `vercel link`
+# appends another one above; a negation only wins if nothing re-ignores it
+# afterwards. This template holds no secrets and must be committed.
+!.env.example
