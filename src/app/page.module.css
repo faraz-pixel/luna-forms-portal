@@ -320,3 +320,20 @@
   }
 }
 
+
+.modeToggle {
+  width: 100%;
+  margin-top: 0.9rem;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.modeToggle:hover {
+  color: #e2e8f0;
+}

@@ -82,11 +82,38 @@ token is what actually stops strangers writing rows. Keep it secret.
 
 ---
 
+## Signing in
+
+Two modes, both on the login page.
+
+**Password (default).** The admin creates accounts in the Supabase dashboard:
+**Authentication → Users → Add user**, enter the email and a password, and tick
+**Auto Confirm User** — without that tick the account cannot sign in. The person
+then signs in with those credentials. No email is sent at any point.
+
+The profile row and admin role are assigned by a database trigger on
+`auth.users`, so it makes no difference whether an account was created from the
+dashboard or by a magic link — both get the right role.
+
+**Magic link.** Available behind "Email me a sign-in link instead". Requires
+working email, which means custom SMTP (see below).
+
+### Why password is the default
+
+Supabase's built-in mailer allows roughly **two messages per hour**, project-wide
+— it is a smoke-test facility, not a mail service. Past that, magic links stop
+arriving with no visible error. Custom SMTP lifts the limit, but the usual route
+for a Google Workspace domain (an app password on `smtp.gmail.com`) needs app
+passwords enabled by the Workspace admin, which is not always possible.
+
+Password sign-in removes email from the critical path entirely. Set up SMTP when
+you can — access-request notifications use it too — but nothing is blocked
+without it.
+
 ## How access works
 
-Sign-in is open: anyone can request a magic link and get an account. What they
-get is an empty dashboard where every form is **locked**, with a Request Access
-button.
+New accounts land on an empty dashboard where every form is **locked**, with a
+Request Access button.
 
 The admin resolves requests at `/admin`, granting one of two levels per form:
 
