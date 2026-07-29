@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
 
 /**
  * The signed-in user's profile, or null.
@@ -9,6 +10,10 @@ import { createClient } from '@/lib/supabase/server';
  * Never gate access on getSession().
  */
 export async function getCurrentUser() {
+  // No credentials configured — treat everyone as signed out so the gated
+  // pages redirect to the setup notice instead of throwing a 500.
+  if (!isSupabaseConfigured()) return null;
+
   const supabase = await createClient();
 
   const { data: { user }, error } = await supabase.auth.getUser();
