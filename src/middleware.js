@@ -12,6 +12,12 @@ import { createServerClient } from '@supabase/ssr';
 const PUBLIC_PATHS = ['/', '/auth'];
 
 export async function middleware(request) {
+  // Nothing to authenticate against yet — let the pages render their own
+  // setup notice rather than throwing here on every single request.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return NextResponse.next({ request });
+  }
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

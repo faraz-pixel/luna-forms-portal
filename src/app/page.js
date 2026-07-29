@@ -3,6 +3,7 @@
 import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
 import styles from './page.module.css';
 
 const ERROR_COPY = {
@@ -135,7 +136,33 @@ function LoginForm() {
   );
 }
 
+function NotConfigured() {
+  return (
+    <div className={styles.container}>
+      <div className={styles.pattern}></div>
+      <div className={styles.card}>
+        <div className={styles.header}>
+          <h1 className={styles.title}>Luna</h1>
+          <h2 className={styles.subtitle}>Forms Portal</h2>
+          <p className={styles.tagline}>Coffee Cartel</p>
+        </div>
+        <p className={styles.requestNote}>
+          This deployment is not connected to its database yet. Add
+          <code> NEXT_PUBLIC_SUPABASE_URL </code> and
+          <code> NEXT_PUBLIC_SUPABASE_ANON_KEY </code> in the Vercel project
+          settings, then redeploy. See <strong>SETUP.md</strong> for the steps.
+        </p>
+      </div>
+      <footer className={styles.footer}>
+        Powered by Luna • Coffee Cartel © 2026
+      </footer>
+    </div>
+  );
+}
+
 export default function LoginPage() {
+  if (!isSupabaseConfigured()) return <NotConfigured />;
+
   return (
     <Suspense fallback={null}>
       <LoginForm />
