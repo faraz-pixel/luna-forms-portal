@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+build/
+.npm-cache/
+
+.env
+.env*.local
+
+# The root .gitignore has a bare `.env*`, which would otherwise swallow the
+# template too. It contains no secrets and must be committed.
+!.env.example
+
+.vercel
+*.tsbuildinfo
+.DS_Store
+npm-debug.log*

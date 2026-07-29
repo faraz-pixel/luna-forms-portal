@@ -1,0 +1,285 @@
+.container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0a0e1a 0%, #131a2e 100%);
+  color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(12px);
+  flex-wrap: wrap;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.backBtn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  margin: 0.15rem 0 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.adminBadge {
+  font-size: 0.82rem;
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  padding: 0.4rem 0.85rem;
+  border-radius: 20px;
+}
+
+.main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  padding: 1.5rem;
+  backdrop-filter: blur(12px);
+}
+
+.panelTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 1.1rem;
+}
+
+.count {
+  background: #ff6b6b;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+}
+
+.empty,
+.hint {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.87rem;
+  margin: 0;
+}
+
+.hint {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+}
+
+.error {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+  color: #ff8b8b;
+  padding: 0.85rem 1.1rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+}
+
+/* ── Requests ──────────────────────────────────────────────── */
+
+.requestList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.requestRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  flex-wrap: wrap;
+}
+
+.requestEmail {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.requestForm {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 0.15rem;
+}
+
+.requestMessage {
+  margin: 0.5rem 0 0;
+  font-size: 0.83rem;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.requestActions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.levelSelect,
+.grantSelect {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.83rem;
+  cursor: pointer;
+}
+
+.grantSelect.granted {
+  border-color: rgba(76, 175, 80, 0.45);
+  color: #7fd48a;
+}
+
+.grantSelect:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.approveBtn,
+.denyBtn {
+  padding: 0.45rem 0.95rem;
+  border-radius: 8px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.approveBtn {
+  background: rgba(76, 175, 80, 0.18);
+  color: #7fd48a;
+  border: 1px solid rgba(76, 175, 80, 0.4);
+}
+
+.approveBtn:hover:not(:disabled) {
+  background: rgba(76, 175, 80, 0.3);
+}
+
+.denyBtn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.denyBtn:hover:not(:disabled) {
+  color: #ff8b8b;
+  border-color: rgba(255, 107, 107, 0.4);
+}
+
+.approveBtn:disabled,
+.denyBtn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* ── Access matrix ─────────────────────────────────────────── */
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.matrix {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 520px;
+}
+
+.matrix th {
+  text-align: left;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+}
+
+.matrix td {
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+.personCol {
+  min-width: 210px;
+}
+
+.personEmail {
+  font-weight: 500;
+}
+
+.roleTag {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 10px;
+  padding: 0.1rem 0.45rem;
+}
+
+@media (max-width: 768px) {
+  .main { padding: 1.25rem; }
+  .header { padding: 1rem 1.25rem; }
+  .requestRow { flex-direction: column; align-items: flex-start; }
+}
