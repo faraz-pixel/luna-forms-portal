@@ -82,15 +82,33 @@ export default function FormsGrid({ forms, grants, isAdmin }) {
   return (
     <section className={styles.formsSection}>
       <div className={styles.sectionHeader}>
-        <h2>Available Forms</h2>
-        <input
-          type="text"
-          placeholder="Search forms..."
-          className={styles.searchInput}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Search forms"
-        />
+        <div>
+          <h2>Available Forms</h2>
+          <span className={styles.resultCount}>
+            {visible.length} {visible.length === 1 ? 'form' : 'forms'}
+          </span>
+        </div>
+        <div className={styles.searchWrap}>
+          <input
+            type="text"
+            placeholder="Search forms..."
+            className={styles.searchInput}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Search forms"
+          />
+          {search && (
+            <button
+              type="button"
+              className={styles.clearSearch}
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              title="Clear search"
+            >
+              x
+            </button>
+          )}
+        </div>
       </div>
 
       <div className={styles.formsGrid}>
