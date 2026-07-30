@@ -11,6 +11,7 @@ import {
   UNITS,
   VENDOR_NAMES,
 } from '@/lib/forms/store-purchase';
+import { formatAmount, parseAmount } from '@/lib/forms/amount';
 import styles from './page.module.css';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -176,6 +177,19 @@ export default function StorePurchaseForm({ userEmail }) {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
   };
 
+  const handleAmountChange = (e) => {
+    const { name, value } = e.target;
+    const raw = value.replaceAll(',', '').replace(/[^0-9()-]/g, '');
+    setFormData((prev) => ({ ...prev, [name]: raw }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
+  };
+
+  const handleAmountBlur = (e) => {
+    const { name, value } = e.target;
+    const formatted = formatAmount(value);
+    setFormData((prev) => ({ ...prev, [name]: formatted || value }));
+  };
+
   const handleProductChange = (index, field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -222,7 +236,7 @@ export default function StorePurchaseForm({ userEmail }) {
     if (isVendorEntry && !formData.vendorInvoiceDate) {
       next.vendorInvoiceDate = 'Bill / Invoice Date is required';
     }
-    if (isVendorEntry && (!formData.vendorBillAmount || Number(formData.vendorBillAmount) <= 0)) {
+    if (isVendorEntry && (!formData.vendorBillAmount || parseAmount(formData.vendorBillAmount) <= 0)) {
       next.vendorBillAmount = 'Bill Amount is required';
     }
     if (isVendorEntry && !formData.vendorBillAttachmentName) {
@@ -606,11 +620,11 @@ export default function StorePurchaseForm({ userEmail }) {
                     <input
                       id="vendorBillAmount"
                       name="vendorBillAmount"
-                      type="number"
-                      min="0"
-                      step="any"
+                      type="text"
+                      inputMode="numeric"
                       value={formData.vendorBillAmount}
-                      onChange={handleInputChange}
+                      onChange={handleAmountChange}
+                      onBlur={handleAmountBlur}
                       className={`${styles.input} ${errors.vendorBillAmount ? styles.inputError : ''}`}
                       placeholder="Enter bill amount..."
                     />
@@ -618,7 +632,7 @@ export default function StorePurchaseForm({ userEmail }) {
                   </div>
 
                   <div className={styles.field}>
-                    <label className={styles.label} htmlFor="vendorBillAttachmentName">Attach Vendor Bill *</label>
+                    <label className={styles.label} htmlFor="vendorBillAttachmentName">Vendor Bill *</label>
                     <input
                       id="vendorBillAttachmentName"
                       name="vendorBillAttachmentName"
@@ -751,7 +765,7 @@ export default function StorePurchaseForm({ userEmail }) {
             </div>
           </div>
 
-          <div className={styles.section}>
+          {!isVendorEntry && <div className={styles.section}>
             <div className={styles.sectionHeader}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -792,7 +806,7 @@ export default function StorePurchaseForm({ userEmail }) {
                 {errors.proofAttachmentName && <span className={styles.errorText}>{errors.proofAttachmentName}</span>}
               </div>
             </div>
-          </div>
+          </div>}
 
           <div className={styles.section}>
             <div className={styles.sectionHeader}>
