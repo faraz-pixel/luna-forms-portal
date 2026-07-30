@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { requireUser, getGrantMap } from '@/lib/auth';
+import { isLocalDemoMode, isSupabaseConfigured } from '@/lib/supabase/config';
 import FormsGrid from './FormsGrid';
 import styles from './page.module.css';
 
@@ -27,6 +28,57 @@ const startOfToday = () => {
   return d.toISOString();
 };
 
+const DEMO_FORMS = [
+  {
+    slug: 'store-purchase',
+    name: 'Stock Inward Entry',
+    description: 'Record vendor deliveries, purchase bills, and commissary receiving',
+    status: 'active',
+    color: 'blue',
+    icon: 'ShoppingCart',
+  },
+  {
+    slug: 'bank-payment-data',
+    name: 'Bank Payment Data',
+    description: 'Record outgoing bank payments and payment categories',
+    status: 'active',
+    color: 'green',
+    icon: 'CreditCard',
+  },
+  {
+    slug: 'vendor-kyc',
+    name: 'Vendor KYC Verification',
+    description: 'Verify vendor credentials',
+    status: 'active',
+    color: 'orange',
+    icon: 'ShieldCheck',
+  },
+  {
+    slug: 'staff-penalty',
+    name: 'Staff Penalties',
+    description: 'Record staff penalty cases',
+    status: 'coming_soon',
+    color: 'red',
+    icon: 'AlertTriangle',
+  },
+  {
+    slug: 'karachi-club-pos',
+    name: 'Karachi Club POS Data',
+    description: 'POS records for Karachi Club',
+    status: 'coming_soon',
+    color: 'purple',
+    icon: 'Monitor',
+  },
+  {
+    slug: 'new-joiner',
+    name: 'Staff Onboarding',
+    description: 'Employee onboarding records',
+    status: 'coming_soon',
+    color: 'teal',
+    icon: 'UserPlus',
+  },
+];
+
 function relativeTime(iso) {
   const then = new Date(iso).getTime();
   const mins = Math.floor((Date.now() - then) / 60000);
@@ -42,41 +94,54 @@ function relativeTime(iso) {
 export default async function DashboardPage({ searchParams }) {
   const params = await searchParams;
   const user = await requireUser();
-  const supabase = await createClient();
   const grants = await getGrantMap(user);
+  const demoMode = isLocalDemoMode() && !isSupabaseConfigured();
 
-  const { data: forms } = await supabase
-    .from('forms')
-    .select('slug, name, description, status, color, icon')
-    .order('sort_order');
+  let forms = DEMO_FORMS;
+  let recent = [];
+  let todayCount = 0;
+  let pendingCount = 0;
+  let memberCount = 1;
 
-  // RLS decides what comes back here — a user with no grants gets an empty
-  // array, not a filtered-in-the-browser list.
-  const { data: recent } = await supabase
-    .from('submissions')
-    .select('id, ref_number, form_slug, user_email, created_at')
-    .order('created_at', { ascending: false })
-    .limit(8);
+  if (!demoMode) {
+    const supabase = await createClient();
 
-  const { count: todayCount } = await supabase
-    .from('submissions')
-    .select('id', { count: 'exact', head: true })
-    .gte('created_at', startOfToday());
+    const { data: formsData } = await supabase
+      .from('forms')
+      .select('slug, name, description, status, color, icon')
+      .order('sort_order');
+    forms = formsData ?? [];
 
-  const { count: pendingCount } = await supabase
-    .from('access_requests')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'pending');
+    // RLS decides what comes back here — a user with no grants gets an empty
+    // array, not a filtered-in-the-browser list.
+    const { data: recentData } = await supabase
+      .from('submissions')
+      .select('id, ref_number, form_slug, user_email, created_at')
+      .order('created_at', { ascending: false })
+      .limit(8);
+    recent = recentData ?? [];
 
-  let memberCount = null;
-  if (user.isAdmin) {
-    const { count } = await supabase
-      .from('profiles')
-      .select('id', { count: 'exact', head: true });
-    memberCount = count ?? 0;
+    const { count: todayDataCount } = await supabase
+      .from('submissions')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', startOfToday());
+    todayCount = todayDataCount ?? 0;
+
+    const { count: pendingDataCount } = await supabase
+      .from('access_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    pendingCount = pendingDataCount ?? 0;
+
+    if (user.isAdmin) {
+      const { count } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact', head: true });
+      memberCount = count ?? 0;
+    }
   }
 
-  const formList = forms ?? [];
+  const formList = forms;
   const grantedCount = formList.filter((f) => grants[f.slug]).length;
   const formsBySlug = Object.fromEntries(formList.map((f) => [f.slug, f.name]));
 

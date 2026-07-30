@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireUser, getGrantMap } from '@/lib/auth';
 import { mirrorToSheet } from '@/lib/sheets';
+import { isLocalDemoMode, isSupabaseConfigured } from '@/lib/supabase/config';
 import {
   FORM_SLUG,
   validateStorePurchase,
@@ -30,6 +31,16 @@ export async function submitStorePurchase(payload) {
   const { valid, errors, value } = validateStorePurchase(payload);
   if (!valid) {
     return { ok: false, fieldErrors: errors, error: 'Please fix the highlighted fields.' };
+  }
+
+  if (isLocalDemoMode() && !isSupabaseConfigured()) {
+    return {
+      ok: true,
+      refNumber: generateRef(),
+      createdAt: new Date().toISOString(),
+      sheetSynced: false,
+      sheetSkipped: true,
+    };
   }
 
   const supabase = await createClient();

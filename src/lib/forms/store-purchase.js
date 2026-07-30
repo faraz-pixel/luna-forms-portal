@@ -6,11 +6,25 @@
  * same arrays, so a hand-crafted POST cannot smuggle in an unknown product or
  * location.
  */
+import { APPROVED_VENDOR_NAMES, LOCATIONS, VENDOR_NAMES } from './validation-options';
+
 export const FORM_SLUG = 'store-purchase';
+
+export const ENTRY_TYPES = [
+  'Vendor Billing / Direct Purchase',
+  'Commissary Dispatch to Branch',
+  'Branch to Branch Transfer',
+];
 
 export const TRANSACTION_TYPES = ['Inward', 'Outward'];
 
-export const LOCATIONS = ['Commissary-KHI', 'Malir', 'KHI-DHA-P8'];
+export const ENTRY_TYPE_TRANSACTION = {
+  'Vendor Billing / Direct Purchase': 'Inward',
+  'Commissary Dispatch to Branch': 'Outward',
+  'Branch to Branch Transfer': 'Inward',
+};
+
+export { LOCATIONS, VENDOR_NAMES };
 
 export const PRODUCTS = [
   'Coffee Beans', 'Sugar', 'Milk', 'Cups', 'Lids', 'Straws',
@@ -30,19 +44,77 @@ export function validateStorePurchase(raw) {
   const errors = {};
   const value = {};
 
-  const type = String(raw?.transactionType ?? '').trim();
+  const entryType = String(raw?.entryType ?? '').trim();
+  if (!ENTRY_TYPES.includes(entryType)) {
+    errors.entryType = 'Select a valid entry type';
+  } else {
+    value.entryType = entryType;
+  }
+
+  const type = ENTRY_TYPE_TRANSACTION[entryType] || String(raw?.transactionType ?? '').trim();
   if (!TRANSACTION_TYPES.includes(type)) {
     errors.transactionType = 'Select a valid transaction type';
   } else {
     value.transactionType = type;
   }
 
-  const location = String(raw?.location ?? '').trim();
-  if (!LOCATIONS.includes(location)) {
-    errors.location = 'Select a valid location';
-  } else {
-    value.location = location;
+  const vendorName = String(raw?.vendorName ?? '').trim().slice(0, 160);
+  if (entryType === 'Vendor Billing / Direct Purchase') {
+    if (!vendorName) {
+      errors.vendorName = 'Vendor name is required for vendor entries';
+    } else if (!APPROVED_VENDOR_NAMES.includes(vendorName)) {
+      errors.vendorName = 'Select a vendor from the list';
+    }
   }
+  value.vendorName = vendorName;
+
+  const vendorInvoiceNumber = String(raw?.vendorInvoiceNumber ?? '').trim().slice(0, 120);
+  const vendorInvoiceDate = String(raw?.vendorInvoiceDate ?? '').trim();
+  const vendorBillAmount = Number(raw?.vendorBillAmount);
+  const vendorBillAttachmentName = String(raw?.vendorBillAttachmentName ?? '').trim().slice(0, 240);
+  if (entryType === 'Vendor Billing / Direct Purchase') {
+    if (!vendorInvoiceNumber) errors.vendorInvoiceNumber = 'Vendor invoice number is required';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(vendorInvoiceDate) || Number.isNaN(Date.parse(vendorInvoiceDate))) {
+      errors.vendorInvoiceDate = 'Enter bill / invoice date';
+    }
+    if (!Number.isFinite(vendorBillAmount) || vendorBillAmount <= 0) {
+      errors.vendorBillAmount = 'Enter bill amount';
+    }
+    if (!vendorBillAttachmentName) errors.vendorBillAttachmentName = 'Attach vendor bill';
+  }
+  value.vendorInvoiceNumber = vendorInvoiceNumber;
+  value.vendorInvoiceDate = vendorInvoiceDate;
+  value.vendorBillAmount = Number.isFinite(vendorBillAmount) && vendorBillAmount > 0 ? vendorBillAmount : null;
+  value.vendorBillAttachmentName = vendorBillAttachmentName;
+
+  const fromLocation = String(raw?.fromLocation ?? '').trim();
+  const toLocation = String(raw?.toLocation ?? '').trim();
+  if (entryType === 'Branch to Branch Transfer') {
+    if (!LOCATIONS.includes(fromLocation)) errors.fromLocation = 'Select from location';
+    if (!LOCATIONS.includes(toLocation)) errors.toLocation = 'Select to location';
+    value.fromLocation = fromLocation;
+    value.toLocation = toLocation;
+    value.location = toLocation;
+  } else {
+    const location = String(raw?.location ?? '').trim();
+    if (!LOCATIONS.includes(location)) {
+      errors.location = 'Select a valid location';
+    } else {
+      value.location = location;
+    }
+    value.fromLocation = '';
+    value.toLocation = '';
+  }
+
+  const requestedBy = String(raw?.requestedBy ?? '').trim().slice(0, 160);
+  if (entryType === 'Branch to Branch Transfer' && !requestedBy) {
+    errors.requestedBy = 'Requested by name / employee ID is required';
+  }
+  value.requestedBy = requestedBy;
+
+  const proofAttachmentName = String(raw?.proofAttachmentName ?? '').trim().slice(0, 240);
+  if (!proofAttachmentName) errors.proofAttachmentName = 'Attach proof';
+  value.proofAttachmentName = proofAttachmentName;
 
   const date = String(raw?.date ?? '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) {

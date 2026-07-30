@@ -4,10 +4,12 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { submitStorePurchase } from './actions';
 import {
-  TRANSACTION_TYPES,
+  ENTRY_TYPES,
+  ENTRY_TYPE_TRANSACTION,
   LOCATIONS,
   PRODUCTS,
   UNITS,
+  VENDOR_NAMES,
 } from '@/lib/forms/store-purchase';
 import styles from './page.module.css';
 
@@ -33,16 +35,105 @@ const esc = (s = '') =>
   );
 
 const initialProduct = { name: '', unit: '', count: '' };
+const VENDOR_KYC_FORM_URL = '/forms/vendor-kyc';
+
+function SearchableInput({
+  id,
+  name,
+  value,
+  onChange,
+  options,
+  placeholder,
+  className,
+  error,
+  ariaLabel,
+  onValidate,
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const search = String(value || '').toLowerCase();
+  const filteredOptions = search
+    ? options.filter((option) => option.toLowerCase().includes(search))
+    : options;
+
+  const handleSelect = (option) => {
+    onChange({ target: { name, value: option } });
+    setIsOpen(false);
+  };
+
+  return (
+    <div className={styles.comboBox}>
+      <input
+        id={id}
+        name={name}
+        type="text"
+        value={value}
+        onChange={(e) => {
+          onChange(e);
+          setIsOpen(true);
+        }}
+        onFocus={() => setIsOpen(true)}
+        onBlur={() => {
+          setTimeout(() => setIsOpen(false), 120);
+          onValidate?.(value);
+        }}
+        className={className}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        autoComplete="off"
+      />
+      <button
+        type="button"
+        className={styles.comboButton}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => setIsOpen((open) => !open)}
+        aria-label="Show options"
+      >
+        ▾
+      </button>
+      {isOpen && (
+        <div className={styles.comboMenu}>
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={styles.comboOption}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSelect(option)}
+              >
+                {option}
+              </button>
+            ))
+          ) : (
+            <div className={styles.comboEmpty}>No matching option</div>
+          )}
+        </div>
+      )}
+      {error}
+    </div>
+  );
+}
 
 export default function StorePurchaseForm({ userEmail }) {
   const dateInputRef = useRef(null);
+  const vendorInvoiceDateInputRef = useRef(null);
 
   const [currentTime, setCurrentTime] = useState('');
   const [formData, setFormData] = useState({
+    entryType: '',
     transactionType: '',
+    vendorName: '',
+    vendorInvoiceNumber: '',
+    vendorInvoiceDate: '',
+    vendorBillAmount: '',
+    vendorBillAttachmentName: '',
     location: '',
+    fromLocation: '',
+    toLocation: '',
     date: '',
     products: [{ ...initialProduct }],
+    requestedBy: '',
+    proofAttachmentName: '',
     remarks: '',
   });
 
@@ -50,6 +141,9 @@ export default function StorePurchaseForm({ userEmail }) {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receipt, setReceipt] = useState(null);
+  const transactionType = ENTRY_TYPE_TRANSACTION[formData.entryType] || '';
+  const isVendorEntry = formData.entryType === 'Vendor Billing / Direct Purchase';
+  const isBranchTransferReceiving = formData.entryType === 'Branch to Branch Transfer';
 
   useEffect(() => {
     setCurrentTime(new Date().toLocaleString());
@@ -58,6 +152,26 @@ export default function StorePurchaseForm({ userEmail }) {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      if (name === 'entryType') {
+        next.transactionType = ENTRY_TYPE_TRANSACTION[value] || '';
+        next.vendorName = '';
+        next.vendorInvoiceNumber = '';
+        next.vendorInvoiceDate = '';
+        next.vendorBillAmount = '';
+        next.vendorBillAttachmentName = '';
+        next.fromLocation = '';
+        next.toLocation = '';
+      }
+      return next;
+    });
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
+  };
+
+  const handleFileChange = (e) => {
+    const { name, files } = e.target;
+    const value = files?.[0]?.name || '';
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
   };
@@ -69,6 +183,18 @@ export default function StorePurchaseForm({ userEmail }) {
     }));
     const errKey = `product_${index}_${field}`;
     if (errors[errKey]) setErrors((prev) => ({ ...prev, [errKey]: null }));
+  };
+
+  const validateOptionField = (field, value, options, message) => {
+    const trimmed = String(value || '').trim();
+    setErrors((prev) => {
+      if (!trimmed || options.includes(trimmed)) {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      }
+      return { ...prev, [field]: message };
+    });
   };
 
   const addProduct = () =>
@@ -83,13 +209,58 @@ export default function StorePurchaseForm({ userEmail }) {
 
   const validateForm = () => {
     const next = {};
-    if (!formData.transactionType) next.transactionType = 'Transaction Type is required';
-    if (!formData.location) next.location = 'Location is required';
+    if (!formData.entryType) next.entryType = 'Entry Type is required';
+    if (!transactionType) next.transactionType = 'Transaction Type is required';
+    if (isVendorEntry && !formData.vendorName.trim()) {
+      next.vendorName = 'Vendor Name is required';
+    } else if (isVendorEntry && !VENDOR_NAMES.includes(formData.vendorName.trim())) {
+      next.vendorName = 'Select a vendor from the list';
+    }
+    if (isVendorEntry && !formData.vendorInvoiceNumber.trim()) {
+      next.vendorInvoiceNumber = 'Vendor Invoice Number is required';
+    }
+    if (isVendorEntry && !formData.vendorInvoiceDate) {
+      next.vendorInvoiceDate = 'Bill / Invoice Date is required';
+    }
+    if (isVendorEntry && (!formData.vendorBillAmount || Number(formData.vendorBillAmount) <= 0)) {
+      next.vendorBillAmount = 'Bill Amount is required';
+    }
+    if (isVendorEntry && !formData.vendorBillAttachmentName) {
+      next.vendorBillAttachmentName = 'Vendor Bill attachment is required';
+    }
+    if (isBranchTransferReceiving) {
+      if (!formData.fromLocation) {
+        next.fromLocation = 'From Location is required';
+      } else if (!LOCATIONS.includes(formData.fromLocation)) {
+        next.fromLocation = 'Select from the location list';
+      }
+      if (!formData.toLocation) {
+        next.toLocation = 'To Location is required';
+      } else if (!LOCATIONS.includes(formData.toLocation)) {
+        next.toLocation = 'Select from the location list';
+      }
+    } else if (!formData.location) {
+      next.location = 'Location is required';
+    } else if (!LOCATIONS.includes(formData.location)) {
+      next.location = 'Select from the location list';
+    }
     if (!formData.date) next.date = 'Date is required';
+    if (isBranchTransferReceiving && !formData.requestedBy.trim()) {
+      next.requestedBy = 'Requested By is required';
+    }
+    if (!formData.proofAttachmentName) next.proofAttachmentName = 'Proof attachment is required';
 
     formData.products.forEach((p, i) => {
-      if (!p.name) next[`product_${i}_name`] = 'Required';
-      if (!p.unit) next[`product_${i}_unit`] = 'Required';
+      if (!p.name) {
+        next[`product_${i}_name`] = 'Required';
+      } else if (!PRODUCTS.includes(p.name)) {
+        next[`product_${i}_name`] = 'Select from list';
+      }
+      if (!p.unit) {
+        next[`product_${i}_unit`] = 'Required';
+      } else if (!UNITS.includes(p.unit)) {
+        next[`product_${i}_unit`] = 'Select from list';
+      }
       if (!p.count || Number(p.count) <= 0) next[`product_${i}_count`] = 'Must be > 0';
     });
 
@@ -103,7 +274,7 @@ export default function StorePurchaseForm({ userEmail }) {
     if (!validateForm()) return;
 
     setIsSubmitting(true);
-    const result = await submitStorePurchase(formData);
+    const result = await submitStorePurchase({ ...formData, transactionType });
     setIsSubmitting(false);
 
     if (!result.ok) {
@@ -117,18 +288,29 @@ export default function StorePurchaseForm({ userEmail }) {
       createdAt: result.createdAt,
       sheetSynced: result.sheetSynced,
       sheetSkipped: result.sheetSkipped,
-      data: formData,
+      data: { ...formData, transactionType },
     });
   };
 
   const openDatePicker = () => dateInputRef.current?.showPicker?.();
+  const openVendorInvoiceDatePicker = () => vendorInvoiceDateInputRef.current?.showPicker?.();
 
   const resetForm = () => {
     setFormData({
+      entryType: '',
       transactionType: '',
+      vendorName: '',
+      vendorInvoiceNumber: '',
+      vendorInvoiceDate: '',
+      vendorBillAmount: '',
+      vendorBillAttachmentName: '',
       location: '',
+      fromLocation: '',
+      toLocation: '',
       date: getTodayISO(),
       products: [{ ...initialProduct }],
+      requestedBy: '',
+      proofAttachmentName: '',
       remarks: '',
     });
     setErrors({});
@@ -147,7 +329,7 @@ export default function StorePurchaseForm({ userEmail }) {
     const html = `
       <html>
       <head>
-        <title>Store Purchase Receipt - ${esc(refNumber)}</title>
+        <title>Stock Inward Receipt - ${esc(refNumber)}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 40px; color: #1a1a1a; max-width: 700px; margin: 0 auto; }
@@ -172,7 +354,7 @@ export default function StorePurchaseForm({ userEmail }) {
       <body>
         <div class="receipt-header">
           <h1>&#9749; Coffee Cartel</h1>
-          <p>Store Purchase Receipt</p>
+          <p>Stock Inward Receipt</p>
         </div>
         <div class="meta-row">
           <div>Ref: <span>${esc(refNumber)}</span></div>
@@ -180,9 +362,11 @@ export default function StorePurchaseForm({ userEmail }) {
         </div>
         <div class="section-title">Transaction Details</div>
         <div class="info-grid">
+          <div class="info-item"><label>Entry Type</label><p>${esc(data.entryType)}</p></div>
           <div class="info-item"><label>Type</label><p>${esc(data.transactionType)}</p></div>
           <div class="info-item"><label>Location</label><p>${esc(data.location)}</p></div>
           <div class="info-item"><label>Submitted By</label><p>${esc(userEmail)}</p></div>
+          ${data.vendorName ? `<div class="info-item"><label>Vendor Name</label><p>${esc(data.vendorName)}</p></div>` : ''}
         </div>
         <div class="section-title">Products</div>
         <table>
@@ -238,8 +422,8 @@ export default function StorePurchaseForm({ userEmail }) {
             </svg>
           </Link>
           <div className={styles.titleWrapper}>
-            <h1>Store Purchase Form</h1>
-            <div className={styles.breadcrumb}>Dashboard &gt; Forms &gt; Store Purchase</div>
+            <h1>Stock Inward Entry</h1>
+            <div className={styles.breadcrumb}>Dashboard &gt; Forms &gt; Stock Inward</div>
           </div>
         </div>
         <div className={styles.userInfo}>
@@ -270,34 +454,181 @@ export default function StorePurchaseForm({ userEmail }) {
 
             <div className={styles.grid}>
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="transactionType">Transaction Type *</label>
+                <label className={styles.label} htmlFor="entryType">Entry Type *</label>
                 <select
-                  id="transactionType"
-                  name="transactionType"
-                  value={formData.transactionType}
+                  id="entryType"
+                  name="entryType"
+                  value={formData.entryType}
                   onChange={handleInputChange}
-                  className={`${styles.select} ${errors.transactionType ? styles.inputError : ''}`}
+                  className={`${styles.select} ${errors.entryType ? styles.inputError : ''}`}
                 >
-                  <option value="">Select Type</option>
-                  {TRANSACTION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  <option value="">Select Entry Type</option>
+                  {ENTRY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                 </select>
-                {errors.transactionType && <span className={styles.errorText}>{errors.transactionType}</span>}
+                {errors.entryType && <span className={styles.errorText}>{errors.entryType}</span>}
               </div>
 
               <div className={styles.field}>
-                <label className={styles.label} htmlFor="location">Location *</label>
-                <select
-                  id="location"
-                  name="location"
-                  value={formData.location}
-                  onChange={handleInputChange}
-                  className={`${styles.select} ${errors.location ? styles.inputError : ''}`}
-                >
-                  <option value="">Select Location</option>
-                  {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-                </select>
-                {errors.location && <span className={styles.errorText}>{errors.location}</span>}
+                <label className={styles.label}>Transaction Type *</label>
+                <div className={`${styles.readOnlyValue} ${errors.transactionType ? styles.inputError : ''}`}>
+                  {transactionType || 'Select Entry Type first'}
+                </div>
+                {errors.transactionType && <span className={styles.errorText}>{errors.transactionType}</span>}
               </div>
+
+              {isBranchTransferReceiving ? (
+                <>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="fromLocation">From Location *</label>
+                    <SearchableInput
+                      id="fromLocation"
+                      name="fromLocation"
+                      value={formData.fromLocation}
+                      onChange={handleInputChange}
+                      className={`${styles.select} ${errors.fromLocation ? styles.inputError : ''}`}
+                      placeholder="From Location..."
+                      options={LOCATIONS}
+                      onValidate={(value) => validateOptionField('fromLocation', value, LOCATIONS, 'Select from the location list')}
+                    />
+                    {errors.fromLocation && <span className={styles.errorText}>{errors.fromLocation}</span>}
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="toLocation">To Location *</label>
+                    <SearchableInput
+                      id="toLocation"
+                      name="toLocation"
+                      value={formData.toLocation}
+                      onChange={handleInputChange}
+                      className={`${styles.select} ${errors.toLocation ? styles.inputError : ''}`}
+                      placeholder="To Location..."
+                      options={LOCATIONS}
+                      onValidate={(value) => validateOptionField('toLocation', value, LOCATIONS, 'Select from the location list')}
+                    />
+                    {errors.toLocation && <span className={styles.errorText}>{errors.toLocation}</span>}
+                  </div>
+                </>
+              ) : (
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="location">Location *</label>
+                  <SearchableInput
+                    id="location"
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    className={`${styles.select} ${errors.location ? styles.inputError : ''}`}
+                    placeholder="Location..."
+                    options={LOCATIONS}
+                    onValidate={(value) => validateOptionField('location', value, LOCATIONS, 'Select from the location list')}
+                  />
+                  {errors.location && <span className={styles.errorText}>{errors.location}</span>}
+                </div>
+              )}
+
+              {isVendorEntry && (
+                <>
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="vendorName">Vendor Name *</label>
+                    <SearchableInput
+                      id="vendorName"
+                      name="vendorName"
+                      value={formData.vendorName}
+                      onChange={handleInputChange}
+                      className={`${styles.input} ${errors.vendorName ? styles.inputError : ''}`}
+                      placeholder="Search vendor name..."
+                      options={VENDOR_NAMES}
+                      onValidate={(value) => validateOptionField('vendorName', value, VENDOR_NAMES, 'Select a vendor from the list')}
+                    />
+                    {errors.vendorName && <span className={styles.errorText}>{errors.vendorName}</span>}
+                    {formData.vendorName === 'Add New Vendor' && (
+                      <a
+                        href={VENDOR_KYC_FORM_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className={styles.inlineAction}
+                      >
+                        Open Vendor KYC
+                      </a>
+                    )}
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="vendorInvoiceNumber">Vendor Invoice Number *</label>
+                    <input
+                      id="vendorInvoiceNumber"
+                      name="vendorInvoiceNumber"
+                      type="text"
+                      value={formData.vendorInvoiceNumber}
+                      onChange={handleInputChange}
+                      className={`${styles.input} ${errors.vendorInvoiceNumber ? styles.inputError : ''}`}
+                      placeholder="Enter invoice number..."
+                      maxLength={120}
+                    />
+                    {errors.vendorInvoiceNumber && <span className={styles.errorText}>{errors.vendorInvoiceNumber}</span>}
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label}>Bill / Invoice Date *</label>
+                    <div className={styles.datePickerWrapper}>
+                      <button
+                        type="button"
+                        className={`${styles.dateDisplay} ${errors.vendorInvoiceDate ? styles.inputError : ''}`}
+                        onClick={openVendorInvoiceDatePicker}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                          <line x1="16" y1="2" x2="16" y2="6"></line>
+                          <line x1="8" y1="2" x2="8" y2="6"></line>
+                          <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span className={formData.vendorInvoiceDate ? styles.dateValue : styles.datePlaceholder}>
+                          {formData.vendorInvoiceDate ? formatDate(formData.vendorInvoiceDate) : 'Select date...'}
+                        </span>
+                      </button>
+                      <input
+                        ref={vendorInvoiceDateInputRef}
+                        type="date"
+                        name="vendorInvoiceDate"
+                        value={formData.vendorInvoiceDate}
+                        onChange={handleInputChange}
+                        className={styles.hiddenDateInput}
+                        tabIndex={-1}
+                        aria-label="Bill / invoice date"
+                      />
+                    </div>
+                    {errors.vendorInvoiceDate && <span className={styles.errorText}>{errors.vendorInvoiceDate}</span>}
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="vendorBillAmount">Bill Amount *</label>
+                    <input
+                      id="vendorBillAmount"
+                      name="vendorBillAmount"
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={formData.vendorBillAmount}
+                      onChange={handleInputChange}
+                      className={`${styles.input} ${errors.vendorBillAmount ? styles.inputError : ''}`}
+                      placeholder="Enter bill amount..."
+                    />
+                    {errors.vendorBillAmount && <span className={styles.errorText}>{errors.vendorBillAmount}</span>}
+                  </div>
+
+                  <div className={styles.field}>
+                    <label className={styles.label} htmlFor="vendorBillAttachmentName">Attach Vendor Bill *</label>
+                    <input
+                      id="vendorBillAttachmentName"
+                      name="vendorBillAttachmentName"
+                      type="file"
+                      onChange={handleFileChange}
+                      className={`${styles.input} ${errors.vendorBillAttachmentName ? styles.inputError : ''}`}
+                    />
+                    {formData.vendorBillAttachmentName && <span className={styles.description}>{formData.vendorBillAttachmentName}</span>}
+                    {errors.vendorBillAttachmentName && <span className={styles.errorText}>{errors.vendorBillAttachmentName}</span>}
+                  </div>
+                </>
+              )}
 
               <div className={styles.field}>
                 <label className={styles.label}>Entry Date *</label>
@@ -343,33 +674,42 @@ export default function StorePurchaseForm({ userEmail }) {
             </div>
 
             <div className={styles.productsContainer}>
+              <div className={styles.productHeaderRow}>
+                <div></div>
+                <div>Product / Item</div>
+                <div>Unit - Weight / Measure</div>
+                <div>Qty</div>
+                <div></div>
+              </div>
               {formData.products.map((product, index) => (
                 <div key={index} className={styles.productRow}>
                   <div className={styles.rowNum}>{index + 1}</div>
 
                   <div className={styles.field}>
-                    <select
+                    <SearchableInput
+                      id={`product-${index}-name`}
                       value={product.name}
                       onChange={(e) => handleProductChange(index, 'name', e.target.value)}
                       className={`${styles.select} ${errors[`product_${index}_name`] ? styles.inputError : ''}`}
                       aria-label={`Product ${index + 1}`}
-                    >
-                      <option value="">Select Product...</option>
-                      {PRODUCTS.map((p) => <option key={p} value={p}>{p}</option>)}
-                    </select>
+                      placeholder="Select..."
+                      options={PRODUCTS}
+                      onValidate={(value) => validateOptionField(`product_${index}_name`, value, PRODUCTS, 'Select from list')}
+                    />
                     {errors[`product_${index}_name`] && <span className={styles.errorText}>{errors[`product_${index}_name`]}</span>}
                   </div>
 
                   <div className={styles.field}>
-                    <select
+                    <SearchableInput
+                      id={`product-${index}-unit`}
                       value={product.unit}
                       onChange={(e) => handleProductChange(index, 'unit', e.target.value)}
                       className={`${styles.select} ${errors[`product_${index}_unit`] ? styles.inputError : ''}`}
                       aria-label={`Unit ${index + 1}`}
-                    >
-                      <option value="">Unit...</option>
-                      {UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                    </select>
+                      placeholder="Select..."
+                      options={UNITS}
+                      onValidate={(value) => validateOptionField(`product_${index}_unit`, value, UNITS, 'Select from list')}
+                    />
                     {errors[`product_${index}_unit`] && <span className={styles.errorText}>{errors[`product_${index}_unit`]}</span>}
                   </div>
 
@@ -378,7 +718,7 @@ export default function StorePurchaseForm({ userEmail }) {
                       type="number"
                       min="0"
                       step="any"
-                      placeholder="Count"
+                      placeholder="Enter qty..."
                       value={product.count}
                       onChange={(e) => handleProductChange(index, 'count', e.target.value)}
                       className={`${styles.input} ${errors[`product_${index}_count`] ? styles.inputError : ''}`}
@@ -406,6 +746,49 @@ export default function StorePurchaseForm({ userEmail }) {
               <button type="button" className={styles.addBtn} onClick={addProduct}>
                 + Add Product
               </button>
+            </div>
+          </div>
+
+          <div className={styles.section}>
+            <div className={styles.sectionHeader}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Proof Details
+            </div>
+
+            <div className={styles.grid}>
+              {isBranchTransferReceiving && (
+                <div className={styles.field}>
+                  <label className={styles.label} htmlFor="requestedBy">Requested By Name / Employee ID *</label>
+                  <input
+                    id="requestedBy"
+                    name="requestedBy"
+                    type="text"
+                    value={formData.requestedBy}
+                    onChange={handleInputChange}
+                    className={`${styles.input} ${errors.requestedBy ? styles.inputError : ''}`}
+                    placeholder="Name or Employee ID..."
+                    maxLength={160}
+                  />
+                  {errors.requestedBy && <span className={styles.errorText}>{errors.requestedBy}</span>}
+                </div>
+              )}
+
+              <div className={styles.field}>
+                <label className={styles.label} htmlFor="proofAttachmentName">Attach Proof *</label>
+                <input
+                  id="proofAttachmentName"
+                  name="proofAttachmentName"
+                  type="file"
+                  onChange={handleFileChange}
+                  className={`${styles.input} ${errors.proofAttachmentName ? styles.inputError : ''}`}
+                />
+                {formData.proofAttachmentName && <span className={styles.description}>{formData.proofAttachmentName}</span>}
+                {errors.proofAttachmentName && <span className={styles.errorText}>{errors.proofAttachmentName}</span>}
+              </div>
             </div>
           </div>
 
@@ -446,7 +829,7 @@ export default function StorePurchaseForm({ userEmail }) {
           <div className={styles.modal}>
             <div className={styles.checkIcon}>✓</div>
             <h2>Submission Successful!</h2>
-            <p>Your store purchase form has been recorded.</p>
+            <p>Your stock inward entry has been recorded.</p>
 
             <div className={styles.modalDetails}>
               <div><span>Ref Number:</span> {receipt.refNumber}</div>
@@ -498,7 +881,7 @@ export default function StorePurchaseForm({ userEmail }) {
       <div id="receiptCapture" style={{ display: 'none', background: '#fff', padding: '40px', fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif', color: '#1a1a1a' }}>
         <div style={{ textAlign: 'center', marginBottom: '28px', paddingBottom: '16px', borderBottom: '2px solid #d4af37' }}>
           <h1 style={{ fontSize: '22px', margin: '0 0 4px 0' }}>☕ Coffee Cartel</h1>
-          <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>Store Purchase Receipt</p>
+          <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>Stock Inward Receipt</p>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f8f8f6', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', fontSize: '13px' }}>
           <div>Ref: <strong>{receipt?.refNumber ?? ''}</strong></div>
@@ -506,9 +889,11 @@ export default function StorePurchaseForm({ userEmail }) {
         </div>
         <div style={{ fontSize: '13px', fontWeight: 600, color: '#d4af37', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Transaction Details</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '28px' }}>
+          <div><div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Entry Type</div><div style={{ fontSize: '15px', fontWeight: 500, marginTop: '4px' }}>{receiptData.entryType || '—'}</div></div>
           <div><div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Type</div><div style={{ fontSize: '15px', fontWeight: 500, marginTop: '4px' }}>{receiptData.transactionType || '—'}</div></div>
           <div><div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Location</div><div style={{ fontSize: '15px', fontWeight: 500, marginTop: '4px' }}>{receiptData.location || '—'}</div></div>
           <div><div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Submitted By</div><div style={{ fontSize: '15px', fontWeight: 500, marginTop: '4px' }}>{userEmail}</div></div>
+          {receiptData.vendorName && <div><div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Vendor Name</div><div style={{ fontSize: '15px', fontWeight: 500, marginTop: '4px' }}>{receiptData.vendorName}</div></div>}
         </div>
         <div style={{ fontSize: '13px', fontWeight: 600, color: '#d4af37', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Products</div>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '28px' }}>

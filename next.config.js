@@ -6,6 +6,13 @@ const nextConfig = {
   // Next otherwise infers the parent directory as the workspace root and traces
   // the wrong files into the serverless bundle.
   outputFileTracingRoot: path.join(__dirname),
+  devIndicators: false,
+  webpack(config, { dev }) {
+    if (dev) {
+      config.cache = false;
+    }
+    return config;
+  },
 };
 
 module.exports = nextConfig;
