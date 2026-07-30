@@ -4,16 +4,20 @@
 -- ─────────────────────────────────────────────────────────────
 -- Config
 -- ─────────────────────────────────────────────────────────────
--- Who is the admin. Change the value here (or update the row later) rather
--- than editing the trigger below.
+-- Who is the admin. Set this once after running the migration:
+--   update app_config set value = 'you@yourdomain.com' where key = 'admin_email';
+-- Do it BEFORE that person's first sign-in — the role is assigned when their
+-- profile row is created.
 create table if not exists app_config (
   key   text primary key,
   value text not null
 );
 
+-- `do nothing`, not `do update`: re-running this migration must never clobber a
+-- configured admin email and lock the real admin out of their own portal.
 insert into app_config (key, value)
-values ('admin_email', 'faraz@coffeecartel.pk')
-on conflict (key) do update set value = excluded.value;
+values ('admin_email', 'CHANGE-ME')
+on conflict (key) do nothing;
 
 -- ─────────────────────────────────────────────────────────────
 -- Tables

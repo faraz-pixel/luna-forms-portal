@@ -11,7 +11,7 @@ submissions table, and user identity were hardcoded; the store-purchase form's
 submit was a fake delay that saved nothing. Two dashboard links pointed at
 `/forms`, a route that did not exist, producing 404s.
 
-The ask: real authentication, an admin (`faraz@coffeecartel.pk`) who can grant
+The ask: real authentication, a single admin account that can grant
 individual people access to individual forms, an access-request flow for
 everyone else, and a locked state on forms a person cannot use.
 

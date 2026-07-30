@@ -20,17 +20,18 @@ Both stay live; they do not share a database or a spreadsheet.
    This creates the tables, the RLS policies, the profile-creation trigger, and
    seeds the 9 form rows. It is safe to re-run.
 
-4. If the admin is not `faraz@coffeecartel.pk`, change it:
+4. Set the admin email. The migration seeds `CHANGE-ME`, so this step is
+   required, not optional:
 
    ```sql
-   update app_config set value = 'someone@coffeecartel.pk' where key = 'admin_email';
+   update app_config set value = 'you@yourdomain.com' where key = 'admin_email';
    ```
 
    Do this **before** that person's first sign-in — the role is assigned when
    their profile row is created. If you miss it, fix it after the fact with:
 
    ```sql
-   update profiles set role = 'admin' where email = 'someone@coffeecartel.pk';
+   update profiles set role = 'admin' where email = 'you@yourdomain.com';
    ```
 
 ## 2. Configure auth
