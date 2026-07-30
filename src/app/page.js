@@ -49,7 +49,7 @@ export default async function LoginPage({ searchParams }) {
           <p className={styles.requestNote}>
             This deployment is not connected to its database yet. Add
             <code> NEXT_PUBLIC_SUPABASE_URL </code> and
-            <code> NEXT_PUBLIC_SUPABASE_ANON_KEY </code> in the Vercel project
+            <code> NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY </code> in the Vercel project
             settings, then redeploy. See <strong>SETUP.md</strong> for the steps.
           </p>
         )}
