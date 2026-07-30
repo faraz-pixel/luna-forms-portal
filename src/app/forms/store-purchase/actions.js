@@ -84,6 +84,24 @@ export async function submitStorePurchase(payload) {
     };
   }
 
+  let billingRecorded = false;
+  if (value.entryType === 'Vendor Billing / Direct Purchase') {
+    const { error: billingError } = await supabase.from('vendor_bills').insert({
+      source_submission_id: inserted.id,
+      vendor_name: value.vendorName,
+      bill_number: value.vendorInvoiceNumber,
+      invoice_date: value.vendorInvoiceDate,
+      bill_amount: value.vendorBillAmount,
+      attachment_name: value.vendorBillAttachmentName,
+      created_by: user.id,
+    });
+    if (billingError) {
+      console.error('[store-purchase] billing record failed', billingError);
+    } else {
+      billingRecorded = true;
+    }
+  }
+
   const mirror = await mirrorToSheet({
     formSlug: FORM_SLUG,
     refNumber: inserted.ref_number,
@@ -109,5 +127,6 @@ export async function submitStorePurchase(payload) {
     // is safe either way.
     sheetSynced: Boolean(mirror.ok),
     sheetSkipped: Boolean(mirror.skipped),
+    billingRecorded,
   };
 }

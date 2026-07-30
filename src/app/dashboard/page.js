@@ -182,6 +182,9 @@ export default async function DashboardPage({ searchParams }) {
           Luna Forms
         </div>
         <div className={styles.userInfo}>
+          {(user.isAdmin || user.role === 'accounts') && (
+            <Link href="/billing" className={styles.adminLink}>Payables</Link>
+          )}
           {user.isAdmin && (
             <Link href="/admin" className={styles.adminLink}>
               Admin

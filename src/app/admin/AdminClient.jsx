@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useTransition } from 'react';
-import { setGrant, revokeGrant, resolveRequest } from './actions';
+import { setGrant, revokeGrant, resolveRequest, setUserRole } from './actions';
 import styles from './page.module.css';
 
 const LEVEL_LABEL = { submit: 'Submit only', view_all: 'Full access' };
@@ -114,7 +114,20 @@ export default function AdminClient({ pending, profiles, forms, grantMap, adminI
                   <tr key={person.id}>
                     <td className={styles.personCol}>
                       <div className={styles.personEmail}>{person.email}</div>
-                      {person.role === 'admin' && <span className={styles.roleTag}>admin</span>}
+                      {person.role === 'admin' ? (
+                        <span className={styles.roleTag}>admin</span>
+                      ) : (
+                        <select
+                          value={person.role}
+                          disabled={busy === `role:${person.id}`}
+                          className={styles.grantSelect}
+                          aria-label={`Team role for ${person.email}`}
+                          onChange={(e) => run(`role:${person.id}`, () => setUserRole(person.id, e.target.value))}
+                        >
+                          <option value="member">Member</option>
+                          <option value="accounts">Accounts Team</option>
+                        </select>
+                      )}
                     </td>
 
                     {grantableForms.map((form) => {
