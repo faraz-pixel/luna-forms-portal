@@ -7,6 +7,7 @@ import {
   PAYMENT_LOCATIONS,
   APPROVED_VENDOR_NAMES,
 } from '@/lib/forms/validation-options';
+import { parseAmount } from '@/lib/forms/amount';
 
 function text(value, max = 500) {
   return String(value ?? '').trim().slice(0, max);
@@ -21,7 +22,7 @@ export async function submitBankPaymentData(raw) {
     chequeRefNumber: text(raw?.chequeRefNumber, 160),
     transferReference: text(raw?.transferReference, 160),
     paymentDescription: text(raw?.paymentDescription, 1000),
-    paymentAmount: Number(raw?.paymentAmount),
+    paymentAmount: parseAmount(raw?.paymentAmount),
     bank: text(raw?.bank, 120),
     location: text(raw?.location, 160),
     paymentCategory: text(raw?.paymentCategory, 120),

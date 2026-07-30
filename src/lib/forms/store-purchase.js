@@ -7,6 +7,7 @@
  * location.
  */
 import { APPROVED_VENDOR_NAMES, LOCATIONS, VENDOR_NAMES } from './validation-options';
+import { parseAmount } from './amount';
 
 export const FORM_SLUG = 'store-purchase';
 
@@ -70,7 +71,7 @@ export function validateStorePurchase(raw) {
 
   const vendorInvoiceNumber = String(raw?.vendorInvoiceNumber ?? '').trim().slice(0, 120);
   const vendorInvoiceDate = String(raw?.vendorInvoiceDate ?? '').trim();
-  const vendorBillAmount = Number(raw?.vendorBillAmount);
+  const vendorBillAmount = parseAmount(raw?.vendorBillAmount);
   const vendorBillAttachmentName = String(raw?.vendorBillAttachmentName ?? '').trim().slice(0, 240);
   if (entryType === 'Vendor Billing / Direct Purchase') {
     if (!vendorInvoiceNumber) errors.vendorInvoiceNumber = 'Vendor invoice number is required';
@@ -113,7 +114,9 @@ export function validateStorePurchase(raw) {
   value.requestedBy = requestedBy;
 
   const proofAttachmentName = String(raw?.proofAttachmentName ?? '').trim().slice(0, 240);
-  if (!proofAttachmentName) errors.proofAttachmentName = 'Attach proof';
+  if (entryType !== 'Vendor Billing / Direct Purchase' && !proofAttachmentName) {
+    errors.proofAttachmentName = 'Attach proof';
+  }
   value.proofAttachmentName = proofAttachmentName;
 
   const date = String(raw?.date ?? '').trim();

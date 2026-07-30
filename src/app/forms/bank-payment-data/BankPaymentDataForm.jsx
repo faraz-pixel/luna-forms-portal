@@ -9,6 +9,7 @@ import {
   PAYMENT_LOCATIONS,
   APPROVED_VENDOR_NAMES,
 } from '@/lib/forms/validation-options';
+import { formatAmount, parseAmount } from '@/lib/forms/amount';
 import styles from '../store-purchase/page.module.css';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -138,7 +139,7 @@ function DateField({ label, name, value, onChange, error }) {
   );
 }
 
-function Field({ label, name, value, onChange, error, type = 'text', placeholder = '' }) {
+function Field({ label, name, value, onChange, onBlur, error, type = 'text', placeholder = '' }) {
   return (
     <div className={styles.field}>
       <label className={styles.label} htmlFor={name}>{label}</label>
@@ -148,6 +149,7 @@ function Field({ label, name, value, onChange, error, type = 'text', placeholder
         type={type}
         value={value}
         onChange={onChange}
+        onBlur={onBlur}
         className={`${styles.input} ${error ? styles.inputError : ''}`}
         placeholder={placeholder}
       />
@@ -178,7 +180,7 @@ export default function BankPaymentDataForm({ userEmail }) {
     if (!formData.chequeRefNumber.trim()) next.chequeRefNumber = 'Cheque / Online Ref No is required';
     if (!formData.transferReference.trim()) next.transferReference = 'Vendor Bill Ref is required';
     if (!formData.paymentDescription.trim()) next.paymentDescription = 'Payment description is required';
-    if (!formData.paymentAmount || Number(formData.paymentAmount) <= 0) next.paymentAmount = 'Payment amount is required';
+    if (!formData.paymentAmount || parseAmount(formData.paymentAmount) <= 0) next.paymentAmount = 'Payment amount is required';
     if (!LUNA_BANKS.includes(formData.bank)) next.bank = 'Select bank from list';
     if (!PAYMENT_LOCATIONS.includes(formData.location)) next.location = 'Select location from list';
     if (!PAYMENT_CATEGORIES.includes(formData.paymentCategory)) next.paymentCategory = 'Select payment category from list';
@@ -200,7 +202,7 @@ export default function BankPaymentDataForm({ userEmail }) {
     }
     setReceipt({
       refNumber: result.refNumber,
-      amount: Number(formData.paymentAmount).toLocaleString(),
+      amount: formatAmount(formData.paymentAmount),
       category: formData.paymentCategory,
       submittedAt: new Date().toLocaleString(),
     });
@@ -250,7 +252,10 @@ export default function BankPaymentDataForm({ userEmail }) {
               <SearchableInput label="Payment Mode *" name="paymentMode" value={formData.paymentMode} onChange={handleChange} options={['Cheque', 'Online']} error={errors.paymentMode} placeholder="Select payment mode..." />
               <Field label="Cheque / Online Ref No *" name="chequeRefNumber" value={formData.chequeRefNumber} onChange={handleChange} error={errors.chequeRefNumber} placeholder="Enter cheque or online ref no..." />
               <Field label="Vendor Bill Ref *" name="transferReference" value={formData.transferReference} onChange={handleChange} error={errors.transferReference} placeholder="Enter vendor bill ref..." />
-              <Field label="Payment Amount *" name="paymentAmount" type="number" value={formData.paymentAmount} onChange={handleChange} error={errors.paymentAmount} placeholder="Enter amount..." />
+              <Field label="Payment Amount *" name="paymentAmount" type="text" value={formData.paymentAmount} onChange={(e) => {
+                const raw = e.target.value.replaceAll(',', '').replace(/[^0-9()-]/g, '');
+                handleChange({ target: { name: 'paymentAmount', value: raw } });
+              }} onBlur={(e) => handleChange({ target: { name: 'paymentAmount', value: formatAmount(e.target.value) || e.target.value } })} error={errors.paymentAmount} placeholder="Enter amount..." />
               <SearchableInput label="Payment From Luna Bank *" name="bank" value={formData.bank} onChange={handleChange} options={LUNA_BANKS} error={errors.bank} placeholder="Search Luna bank..." />
               <SearchableInput label="Location *" name="location" value={formData.location} onChange={handleChange} options={PAYMENT_LOCATIONS} error={errors.location} placeholder="Search location..." />
               <SearchableInput label="Payment Category *" name="paymentCategory" value={formData.paymentCategory} onChange={handleChange} options={PAYMENT_CATEGORIES} error={errors.paymentCategory} placeholder="Search category..." />
