@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { getSupabasePublishableKey } from './config';
 
 /**
  * Supabase client for Server Components, Server Actions and Route Handlers.
@@ -12,7 +13,7 @@ export async function createClient() {
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    getSupabasePublishableKey(),
     {
       cookies: {
         getAll() {

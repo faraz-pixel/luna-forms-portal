@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
+import { getSupabasePublishableKey } from '@/lib/supabase/config';
 
 /**
  * Refreshes the Supabase auth cookie on every request and keeps unauthenticated
@@ -14,7 +15,7 @@ const PUBLIC_PATHS = ['/', '/auth'];
 export async function middleware(request) {
   // Nothing to authenticate against yet — let the pages render their own
   // setup notice rather than throwing here on every single request.
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !getSupabasePublishableKey()) {
     return NextResponse.next({ request });
   }
 
@@ -22,7 +23,7 @@ export async function middleware(request) {
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    getSupabasePublishableKey(),
     {
       cookies: {
         getAll() {
