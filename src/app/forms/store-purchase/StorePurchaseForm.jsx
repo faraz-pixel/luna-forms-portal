@@ -367,6 +367,8 @@ export default function StorePurchaseForm({ userEmail }) {
           <div class="info-item"><label>Location</label><p>${esc(data.location)}</p></div>
           <div class="info-item"><label>Submitted By</label><p>${esc(userEmail)}</p></div>
           ${data.vendorName ? `<div class="info-item"><label>Vendor Name</label><p>${esc(data.vendorName)}</p></div>` : ''}
+          ${data.vendorInvoiceNumber ? `<div class="info-item"><label>Vendor Bill No.</label><p>${esc(data.vendorInvoiceNumber)}</p></div>` : ''}
+          ${data.vendorBillAmount ? `<div class="info-item"><label>Bill Amount</label><p>${esc(Number(data.vendorBillAmount).toLocaleString())}</p></div>` : ''}
         </div>
         <div class="section-title">Products</div>
         <table>
