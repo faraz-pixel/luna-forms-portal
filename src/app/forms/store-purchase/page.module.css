@@ -144,10 +144,92 @@
   transition: all 0.3s ease;
 }
 
+.readOnlyValue {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  color: #d4af37;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+
 .input:focus, .select:focus, .textarea:focus {
   outline: none;
   border-color: #d4af37;
   box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+.comboBox {
+  position: relative;
+}
+
+.comboBox .input,
+.comboBox .select {
+  width: 100%;
+  padding-right: 2.5rem;
+}
+
+.comboButton {
+  position: absolute;
+  right: 0.65rem;
+  top: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  border: 0;
+  background: transparent;
+  color: #777;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.comboButton:hover {
+  color: #d4af37;
+}
+
+.comboMenu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 20;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #050505;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 8px;
+  padding: 0.35rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65);
+}
+
+.comboOption {
+  width: 100%;
+  display: block;
+  border: 0;
+  background: transparent;
+  color: #f5f5f5;
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.comboOption:hover,
+.comboOption:focus {
+  outline: none;
+  background: rgba(212, 175, 55, 0.18);
+  color: #fff;
+}
+
+.comboEmpty {
+  color: #888;
+  padding: 0.75rem;
+  font-size: 0.9rem;
 }
 
 .inputError {
@@ -159,6 +241,26 @@
   color: #ff4444;
   font-size: 0.75rem;
   margin-top: 0.25rem;
+}
+
+.inlineAction {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #d4af37;
+  border: 1px dashed rgba(212, 175, 55, 0.55);
+  border-radius: 6px;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  background: rgba(212, 175, 55, 0.06);
+}
+
+.inlineAction:hover {
+  background: rgba(212, 175, 55, 0.14);
+  border-style: solid;
 }
 
 /* Custom Date Picker */
@@ -222,6 +324,35 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.productHeaderRow {
+  display: grid;
+  grid-template-columns: 40px 2fr 1fr 1fr 40px;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  margin-bottom: -0.25rem;
+  background: rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 8px;
+  color: #d4af37;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.productHeaderRow div {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+}
+
+.productHeaderRow div:nth-child(3),
+.productHeaderRow div:nth-child(4) {
+  justify-content: center;
+  text-align: center;
 }
 
 .productRow {
@@ -523,6 +654,11 @@
     grid-template-columns: 32px 2fr 1fr 1fr 36px;
     gap: 0.75rem;
   }
+
+  .productHeaderRow {
+    grid-template-columns: 32px 2fr 1fr 1fr 36px;
+    gap: 0.75rem;
+  }
 }
 
 /* Responsive: Mobile (<=768px) */
@@ -583,6 +719,10 @@
     position: relative;
     padding: 1rem;
     padding-top: 2.5rem;
+  }
+
+  .productHeaderRow {
+    display: none;
   }
 
   .rowNum {

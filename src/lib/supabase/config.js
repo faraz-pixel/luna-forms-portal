@@ -11,3 +11,7 @@ export function isSupabaseConfigured() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );
 }
+
+export function isLocalDemoMode() {
+  return process.env.NEXT_PUBLIC_LOCAL_DEMO === 'true';
+}

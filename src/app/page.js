@@ -1,4 +1,5 @@
-import { isSupabaseConfigured } from '@/lib/supabase/config';
+import Link from 'next/link';
+import { isLocalDemoMode, isSupabaseConfigured } from '@/lib/supabase/config';
 import LoginForm from './LoginForm';
 import styles from './page.module.css';
 
@@ -7,6 +8,8 @@ const ERROR_COPY = {
   link_expired: 'That sign-in link has expired or was already used. Request a new one below.',
 };
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Server Component so the branded card is real HTML on first paint. Only the
  * interactive form below it is a client component.
@@ -14,6 +17,7 @@ const ERROR_COPY = {
 export default async function LoginPage({ searchParams }) {
   const params = await searchParams;
   const configured = isSupabaseConfigured();
+  const demoMode = isLocalDemoMode() && !configured;
 
   const next = typeof params?.next === 'string' ? params.next : '';
   const initialError = ERROR_COPY[params?.error] ?? '';
@@ -29,7 +33,17 @@ export default async function LoginPage({ searchParams }) {
           <p className={styles.tagline}>Coffee Cartel</p>
         </div>
 
-        {configured ? (
+        {demoMode ? (
+          <div className={styles.requestNote}>
+            <p style={{ margin: '0 0 16px' }}>
+              Local demo mode is on. Database connection is skipped for localhost
+              preview only.
+            </p>
+            <Link href="/dashboard" style={{ color: '#d4af37', fontWeight: 700 }}>
+              Open Local Demo
+            </Link>
+          </div>
+        ) : configured ? (
           <LoginForm initialError={initialError} next={next} />
         ) : (
           <p className={styles.requestNote}>

@@ -1,6 +1,14 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { isSupabaseConfigured } from '@/lib/supabase/config';
+import { isLocalDemoMode, isSupabaseConfigured } from '@/lib/supabase/config';
+
+const DEMO_USER = {
+  id: 'local-demo-user',
+  email: 'faraz@coffeecartel.pk',
+  full_name: 'Faraz',
+  role: 'admin',
+  isAdmin: true,
+};
 
 /**
  * The signed-in user's profile, or null.
@@ -10,6 +18,8 @@ import { isSupabaseConfigured } from '@/lib/supabase/config';
  * Never gate access on getSession().
  */
 export async function getCurrentUser() {
+  if (isLocalDemoMode() && !isSupabaseConfigured()) return DEMO_USER;
+
   // No credentials configured — treat everyone as signed out so the gated
   // pages redirect to the setup notice instead of throwing a 500.
   if (!isSupabaseConfigured()) return null;
@@ -49,6 +59,17 @@ export async function requireAdmin() {
  * Admin implicitly holds view_all on everything.
  */
 export async function getGrantMap(user) {
+  if (isLocalDemoMode() && !isSupabaseConfigured()) {
+    return {
+      'store-purchase': 'view_all',
+      'vendor-kyc': 'view_all',
+      'bank-payment-data': 'view_all',
+      'staff-penalty': 'view_all',
+      'karachi-club-pos': 'view_all',
+      'new-joiner': 'view_all',
+    };
+  }
+
   const supabase = await createClient();
 
   if (user.isAdmin) {
