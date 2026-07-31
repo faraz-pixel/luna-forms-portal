@@ -1,11 +1,24 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { endorseVendorBill, recordVendorPayment } from './actions';
+import { formatDate } from '@/lib/date';
 import styles from './page.module.css';
 
 function money(value) {
   return Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+function DatePicker({ value, onChange, label }) {
+  const inputRef = useRef(null);
+  return (
+    <span className={styles.datePicker}>
+      <button type="button" className={styles.dateButton} onClick={() => inputRef.current?.showPicker?.()}>
+        {formatDate(value) || 'Select date'}
+      </button>
+      <input ref={inputRef} className={styles.datePickerInput} type="date" value={value || ''} onChange={onChange} aria-label={label} />
+    </span>
+  );
 }
 
 export default function BillingClient({ bills }) {
@@ -57,8 +70,8 @@ export default function BillingClient({ bills }) {
               <tr key={bill.id}>
                 <td>{bill.vendor_name}</td>
                 <td>{bill.bill_number}</td>
-                <td>{bill.invoice_date}</td>
-                <td>{bill.due_date || 'Hidden until endorsed'}</td>
+                <td>{formatDate(bill.invoice_date)}</td>
+                <td>{bill.due_date ? formatDate(bill.due_date) : 'Hidden until endorsed'}</td>
                 <td>{money(bill.bill_amount)}</td>
                 <td>{money(bill.paid_amount)}</td>
                 <td>{money(bill.balance)}</td>
@@ -83,7 +96,7 @@ export default function BillingClient({ bills }) {
                       <span className={styles.status}>{bill.payable_status}</span>
                       {bill.balance > 0 && (
                         <div className={styles.paymentAction}>
-                          <input type="date" value={payment[bill.id]?.paymentDate ?? ''} onChange={(e) => setPayment((prev) => ({ ...prev, [bill.id]: { ...prev[bill.id], paymentDate: e.target.value } }))} aria-label={`Payment date for ${bill.bill_number}`} />
+                          <DatePicker value={payment[bill.id]?.paymentDate ?? ''} onChange={(e) => setPayment((prev) => ({ ...prev, [bill.id]: { ...prev[bill.id], paymentDate: e.target.value } }))} label={`Payment date for ${bill.bill_number}`} />
                           <input type="number" min="0" step="0.01" placeholder="Amount" value={payment[bill.id]?.amount ?? ''} onChange={(e) => setPayment((prev) => ({ ...prev, [bill.id]: { ...prev[bill.id], amount: e.target.value } }))} aria-label={`Payment amount for ${bill.bill_number}`} />
                           <input type="text" placeholder="Ref" value={payment[bill.id]?.paymentReference ?? ''} onChange={(e) => setPayment((prev) => ({ ...prev, [bill.id]: { ...prev[bill.id], paymentReference: e.target.value } }))} aria-label={`Payment reference for ${bill.bill_number}`} />
                           <button type="button" disabled={busy === `payment:${bill.id}`} onClick={() => submitPayment(bill.id)}>{busy === `payment:${bill.id}` ? 'Saving…' : 'Record payment'}</button>
