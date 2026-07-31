@@ -62,7 +62,9 @@ export default async function AdminPage() {
             <p className={styles.subtitle}>Access requests and permissions</p>
           </div>
         </div>
-        <div className={styles.adminBadge}>{admin.email}</div>
+          <div className={styles.adminBadge}>
+            <Link href="/admin/kpi">User KPIs</Link> · {admin.email}
+          </div>
       </header>
 
       <main className={styles.main}>

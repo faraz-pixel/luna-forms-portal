@@ -54,6 +54,13 @@ export async function requireAdmin() {
   return user;
 }
 
+/** Accounts members can review vendor bills; admins retain full access. */
+export async function requireAccounts() {
+  const user = await requireUser();
+  if (!user.isAdmin && user.role !== 'accounts') redirect('/dashboard');
+  return user;
+}
+
 /**
  * Every grant the current user holds, as { [form_slug]: 'submit' | 'view_all' }.
  * Admin implicitly holds view_all on everything.

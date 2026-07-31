@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireAdmin } from '@/lib/auth';
 
 const LEVELS = ['submit', 'view_all'];
+const ROLES = ['member', 'accounts'];
 
 /**
  * Every action here calls requireAdmin() first. That is the app-layer gate;
@@ -51,6 +52,24 @@ export async function revokeGrant(userId, formSlug) {
   if (error) {
     console.error('[admin] revokeGrant failed', error);
     return { ok: false, error: 'Could not revoke access.' };
+  }
+
+  revalidatePath('/admin');
+  revalidatePath('/dashboard');
+  return { ok: true };
+}
+
+export async function setUserRole(userId, role) {
+  const admin = await requireAdmin();
+  if (userId === admin.id || !ROLES.includes(role)) {
+    return { ok: false, error: 'Invalid team role.' };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('profiles').update({ role }).eq('id', userId);
+  if (error) {
+    console.error('[admin] setUserRole failed', error);
+    return { ok: false, error: 'Could not update the team role.' };
   }
 
   revalidatePath('/admin');

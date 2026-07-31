@@ -288,7 +288,16 @@ export default function StorePurchaseForm({ userEmail }) {
     if (!validateForm()) return;
 
     setIsSubmitting(true);
-    const result = await submitStorePurchase({ ...formData, transactionType });
+    // Keep the accounting display (for example, "12,389") in the field,
+    // but submit a numeric value so formatted commas can never break saving.
+    const submissionData = {
+      ...formData,
+      transactionType,
+      vendorBillAmount: formData.vendorBillAmount
+        ? parseAmount(formData.vendorBillAmount)
+        : formData.vendorBillAmount,
+    };
+    const result = await submitStorePurchase(submissionData);
     setIsSubmitting(false);
 
     if (!result.ok) {
@@ -302,7 +311,7 @@ export default function StorePurchaseForm({ userEmail }) {
       createdAt: result.createdAt,
       sheetSynced: result.sheetSynced,
       sheetSkipped: result.sheetSkipped,
-      data: { ...formData, transactionType },
+      data: submissionData,
     });
   };
 
