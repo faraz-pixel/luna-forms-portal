@@ -14,6 +14,9 @@
 .termAction { display: flex; gap: 6px; }
 .paymentAction { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .paymentAction input { border: 1px solid #454752; border-radius: 7px; padding: 8px; background: #191a21; color: #fff; max-width: 130px; }
+.datePicker { position: relative; display: inline-flex; }
+.dateButton { border: 1px solid #454752; border-radius: 7px; padding: 8px; background: #191a21; color: #fff; min-width: 130px; text-align: left; cursor: pointer; }
+.datePickerInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .paymentAction button { border: 1px solid #454752; border-radius: 7px; padding: 8px; background: #d4af37; color: #111; cursor: pointer; font-weight: 700; }
 .termAction input { width: 72px; }
 .status { color: #d4af37; text-transform: capitalize; }

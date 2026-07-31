@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { requireUser, getGrantMap } from '@/lib/auth';
 import { isLocalDemoMode, isSupabaseConfigured } from '@/lib/supabase/config';
+import { formatDate } from '@/lib/date';
 import FormsGrid from './FormsGrid';
 import styles from './page.module.css';
 
@@ -164,9 +165,7 @@ export default async function DashboardPage({ searchParams }) {
 
   const displayName = (user.full_name || user.email.split('@')[0] || '').trim();
   const initial = (displayName[0] || '?').toUpperCase();
-  const currentDate = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-  });
+  const currentDate = formatDate(new Date().toISOString());
 
   const denied = params?.denied
     ? formsBySlug[params.denied] || params.denied
