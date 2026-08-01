@@ -1,0 +1,389 @@
+/* Vendor Master admin page — own CSS module so billing styles are not a dependency. */
+
+/* ── Layout ─────────────────────────────────────────────────── */
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.tab {
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.87rem;
+  font-weight: 500;
+  transition: all 0.18s ease;
+}
+
+.tab:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+  color: #d4af37;
+}
+
+.tabActive {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: rgba(212, 175, 55, 0.5);
+  color: #d4af37;
+}
+
+/* ── Feedback banners ────────────────────────────────────────── */
+
+.success {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.35);
+  color: #7fd48a;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+.error {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  color: #ff8b8b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+}
+
+/* ── Table ───────────────────────────────────────────────────── */
+
+.tableWrap {
+  overflow-x: auto;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 700px;
+}
+
+.table th {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #d4af37;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 13px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.88rem;
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.empty {
+  padding: 28px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.88rem;
+}
+
+/* ── Status badges ───────────────────────────────────────────── */
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.badgeApproved {
+  background: rgba(76, 175, 80, 0.15);
+  color: #7fd48a;
+  border: 1px solid rgba(76, 175, 80, 0.35);
+}
+
+.badgePending {
+  background: rgba(255, 165, 0, 0.12);
+  color: #ffb347;
+  border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+.badgeInactive {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.badgeBlacklisted {
+  background: rgba(255, 80, 80, 0.1);
+  color: #ff7070;
+  border: 1px solid rgba(255, 80, 80, 0.3);
+}
+
+.badgeAutoMatch {
+  background: rgba(0, 150, 255, 0.1);
+  color: #5ab4ff;
+  border: 1px solid rgba(0, 150, 255, 0.3);
+}
+
+.badgeManual {
+  background: rgba(76, 175, 80, 0.1);
+  color: #7fd48a;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.badgeUnmatched {
+  background: rgba(255, 107, 107, 0.1);
+  color: #ff7575;
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.badgeAmbiguous {
+  background: rgba(255, 165, 0, 0.1);
+  color: #ffb347;
+  border: 1px solid rgba(255, 165, 0, 0.3);
+}
+
+.mono {
+  font-family: ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.muted {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Status select inline ────────────────────────────────────── */
+
+.statusSelect {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  padding: 5px 8px;
+  border-radius: 7px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  min-width: 110px;
+}
+
+.statusSelect:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+/* ── Mapping resolve inline ──────────────────────────────────── */
+
+.resolveRow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.resolveSelect {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e2e8f0;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 0.83rem;
+  min-width: 180px;
+}
+
+.resolveInput {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 0.83rem;
+  width: 160px;
+}
+
+.resolveInput::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+
+.btnPrimary {
+  background: #d4af37;
+  color: #111;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.18s ease;
+  white-space: nowrap;
+}
+
+.btnPrimary:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.btnSecondary {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.btnSecondary:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btnSmall {
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 5px 12px;
+  border-radius: 7px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+.btnSmall:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.btnSave {
+  background: rgba(76, 175, 80, 0.2);
+  color: #7fd48a;
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  padding: 5px 14px;
+  border-radius: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.18s ease;
+  white-space: nowrap;
+}
+
+.btnSave:hover:not(:disabled) {
+  background: rgba(76, 175, 80, 0.32);
+}
+
+.btnSave:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.btnCancel {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.45);
+  border: none;
+  padding: 5px 10px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.btnCancel:hover {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* ── Create vendor form ──────────────────────────────────────── */
+
+.createForm {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.createForm h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 20px;
+  color: #e2e8f0;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.fieldInput,
+.fieldSelect {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.18s ease;
+}
+
+.fieldInput:focus,
+.fieldSelect:focus {
+  outline: none;
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+.fieldInput::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.formActions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* ── Hint text ───────────────────────────────────────────────── */
+
+.hint {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}

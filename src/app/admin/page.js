@@ -63,7 +63,7 @@ export default async function AdminPage() {
           </div>
         </div>
           <div className={styles.adminBadge}>
-            <Link href="/admin/kpi">User KPIs</Link> · {admin.email}
+            <Link href="/admin/kpi" style={{ marginRight: '8px' }}>User KPIs</Link> · <Link href="/admin/vendors" style={{ margin: '0 8px' }}>Vendors</Link> · {admin.email}
           </div>
       </header>
 
