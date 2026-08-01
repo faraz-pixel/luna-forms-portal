@@ -115,15 +115,20 @@ function SearchableInput({
   );
 }
 
-export default function StorePurchaseForm({ userEmail }) {
+export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
   const dateInputRef = useRef(null);
   const vendorInvoiceDateInputRef = useRef(null);
+
+  const vendorsList = initialVendors && initialVendors.length > 0
+    ? [...initialVendors.map((v) => v.name), 'Add New Vendor']
+    : VENDOR_NAMES;
 
   const [currentTime, setCurrentTime] = useState('');
   const [formData, setFormData] = useState({
     entryType: '',
     transactionType: '',
     vendorName: '',
+    vendorId: '',
     vendorInvoiceNumber: '',
     vendorInvoiceDate: '',
     vendorBillAmount: '',
@@ -158,12 +163,16 @@ export default function StorePurchaseForm({ userEmail }) {
       if (name === 'entryType') {
         next.transactionType = ENTRY_TYPE_TRANSACTION[value] || '';
         next.vendorName = '';
+        next.vendorId = '';
         next.vendorInvoiceNumber = '';
         next.vendorInvoiceDate = '';
         next.vendorBillAmount = '';
         next.vendorBillAttachmentName = '';
         next.fromLocation = '';
         next.toLocation = '';
+      } else if (name === 'vendorName') {
+        const found = (initialVendors || []).find((v) => v.name === value);
+        next.vendorId = found ? found.id : '';
       }
       return next;
     });
@@ -227,7 +236,7 @@ export default function StorePurchaseForm({ userEmail }) {
     if (!transactionType) next.transactionType = 'Transaction Type is required';
     if (isVendorEntry && !formData.vendorName.trim()) {
       next.vendorName = 'Vendor Name is required';
-    } else if (isVendorEntry && !VENDOR_NAMES.includes(formData.vendorName.trim())) {
+    } else if (isVendorEntry && !vendorsList.includes(formData.vendorName.trim())) {
       next.vendorName = 'Select a vendor from the list';
     }
     if (isVendorEntry && !formData.vendorInvoiceNumber.trim()) {
@@ -323,6 +332,7 @@ export default function StorePurchaseForm({ userEmail }) {
       entryType: '',
       transactionType: '',
       vendorName: '',
+      vendorId: '',
       vendorInvoiceNumber: '',
       vendorInvoiceDate: '',
       vendorBillAmount: '',
@@ -561,8 +571,8 @@ export default function StorePurchaseForm({ userEmail }) {
                       onChange={handleInputChange}
                       className={`${styles.input} ${errors.vendorName ? styles.inputError : ''}`}
                       placeholder="Search vendor name..."
-                      options={VENDOR_NAMES}
-                      onValidate={(value) => validateOptionField('vendorName', value, VENDOR_NAMES, 'Select a vendor from the list')}
+                      options={vendorsList}
+                      onValidate={(value) => validateOptionField('vendorName', value, vendorsList, 'Select a vendor from the list')}
                     />
                     {errors.vendorName && <span className={styles.errorText}>{errors.vendorName}</span>}
                     {formData.vendorName === 'Add New Vendor' && (

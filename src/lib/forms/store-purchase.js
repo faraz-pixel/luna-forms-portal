@@ -41,7 +41,7 @@ export const MAX_REMARKS = 1000;
  * Validate a raw submission payload.
  * Returns { valid, errors, value } — `value` is the cleaned payload to persist.
  */
-export function validateStorePurchase(raw) {
+export function validateStorePurchase(raw, allowedVendors = APPROVED_VENDOR_NAMES) {
   const errors = {};
   const value = {};
 
@@ -63,11 +63,14 @@ export function validateStorePurchase(raw) {
   if (entryType === 'Vendor Billing / Direct Purchase') {
     if (!vendorName) {
       errors.vendorName = 'Vendor name is required for vendor entries';
-    } else if (!APPROVED_VENDOR_NAMES.includes(vendorName)) {
+    } else if (!allowedVendors.includes(vendorName)) {
       errors.vendorName = 'Select a vendor from the list';
     }
   }
   value.vendorName = vendorName;
+
+  const vendorId = String(raw?.vendorId ?? '').trim();
+  value.vendorId = vendorId || null;
 
   const vendorInvoiceNumber = String(raw?.vendorInvoiceNumber ?? '').trim().slice(0, 120);
   const vendorInvoiceDate = String(raw?.vendorInvoiceDate ?? '').trim();

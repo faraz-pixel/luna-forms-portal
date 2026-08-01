@@ -1,5 +1,6 @@
 import { requireFormAccess } from '@/lib/auth';
 import { FORM_SLUG } from '@/lib/forms/store-purchase';
+import { getActiveVendorMappings } from '@/lib/forms/vendors-server';
 import StorePurchaseForm from './StorePurchaseForm';
 
 export const dynamic = 'force-dynamic';
@@ -10,11 +11,13 @@ export const dynamic = 'force-dynamic';
  */
 export default async function StorePurchasePage() {
   const { user, level } = await requireFormAccess(FORM_SLUG);
+  const initialVendors = await getActiveVendorMappings();
 
   return (
     <StorePurchaseForm
       userEmail={user.email}
       canViewAll={level === 'view_all' || user.isAdmin}
+      initialVendors={initialVendors}
     />
   );
 }

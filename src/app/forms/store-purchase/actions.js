@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireUser, getGrantMap } from '@/lib/auth';
 import { mirrorToSheet } from '@/lib/sheets';
 import { isLocalDemoMode, isSupabaseConfigured } from '@/lib/supabase/config';
+import { getActiveVendors } from '@/lib/forms/vendors-server';
 import {
   FORM_SLUG,
   validateStorePurchase,
@@ -28,7 +29,8 @@ export async function submitStorePurchase(payload) {
     return { ok: false, error: 'You do not have access to this form.' };
   }
 
-  const { valid, errors, value } = validateStorePurchase(payload);
+  const allowedVendors = await getActiveVendors();
+  const { valid, errors, value } = validateStorePurchase(payload, allowedVendors);
   if (!valid) {
     return { ok: false, fieldErrors: errors, error: 'Please fix the highlighted fields.' };
   }
@@ -86,8 +88,21 @@ export async function submitStorePurchase(payload) {
 
   let billingRecorded = false;
   if (value.entryType === 'Vendor Billing / Direct Purchase') {
+    let finalVendorId = value.vendorId;
+    if (!finalVendorId && value.vendorName) {
+      const { data: vRecord } = await supabase
+        .from('vendors')
+        .select('id')
+        .eq('name', value.vendorName)
+        .single();
+      if (vRecord) {
+        finalVendorId = vRecord.id;
+      }
+    }
+
     const { error: billingError } = await supabase.from('vendor_bills').insert({
       source_submission_id: inserted.id,
+      vendor_id: finalVendorId || null,
       vendor_name: value.vendorName,
       bill_number: value.vendorInvoiceNumber,
       invoice_date: value.vendorInvoiceDate,
