@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { submitStorePurchase } from './actions';
+import { createClient } from '@/lib/supabase/client';
 import {
   ENTRY_TYPES,
   ENTRY_TYPE_TRANSACTION,
@@ -10,9 +11,13 @@ import {
   PRODUCTS,
   UNITS,
   VENDOR_NAMES,
+  ACCEPT_FILE_TYPES,
+  MAX_FILE_SIZE_BYTES,
+  isAllowedFileExtension,
 } from '@/lib/forms/store-purchase';
 import { formatAmount, parseAmount } from '@/lib/forms/amount';
 import styles from './page.module.css';
+
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -147,6 +152,11 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [receipt, setReceipt] = useState(null);
+  const [debugMode, setDebugMode] = useState(false);
+  const [debugLogs, setDebugLogs] = useState([]);
+  const [vendorBillFile, setVendorBillFile] = useState(null);
+  const [proofFile, setProofFile] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(null);
   const transactionType = ENTRY_TYPE_TRANSACTION[formData.entryType] || '';
   const isVendorEntry = formData.entryType === 'Vendor Billing / Direct Purchase';
   const isBranchTransferReceiving = formData.entryType === 'Branch to Branch Transfer';
@@ -154,6 +164,21 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
   useEffect(() => {
     setCurrentTime(new Date().toLocaleString());
     setFormData((prev) => ({ ...prev, date: getTodayISO() }));
+    if (typeof window !== 'undefined' && (window.location.search.includes('debug=true') || window.location.search.includes('debug=1'))) {
+      setDebugMode(true);
+    }
+  }, []);
+
+  const addDebugLog = useCallback((step, title, details) => {
+    const entry = {
+      id: Date.now() + Math.random(),
+      timestamp: new Date().toLocaleTimeString(),
+      step,
+      title,
+      details,
+    };
+    setDebugLogs((prev) => [...prev, entry]);
+    console.log(`[STORE-PURCHASE DEBUG | STEP ${step}] ${title}`, details);
   }, []);
 
   const handleInputChange = (e) => {
@@ -176,15 +201,51 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
       }
       return next;
     });
+    if (name === 'entryType') {
+      setVendorBillFile(null);
+      setProofFile(null);
+    }
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
   };
 
   const handleFileChange = (e) => {
     const { name, files } = e.target;
-    const value = files?.[0]?.name || '';
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const selectedFile = files?.[0];
+
+    if (!selectedFile) {
+      setFormData((prev) => ({ ...prev, [name]: '' }));
+      if (name === 'vendorBillAttachmentName') setVendorBillFile(null);
+      if (name === 'proofAttachmentName') setProofFile(null);
+      return;
+    }
+
+    if (selectedFile.size > MAX_FILE_SIZE_BYTES) {
+      setErrors((prev) => ({ ...prev, [name]: 'File size exceeds maximum 50 MB limit.' }));
+      e.target.value = '';
+      setFormData((prev) => ({ ...prev, [name]: '' }));
+      if (name === 'vendorBillAttachmentName') setVendorBillFile(null);
+      if (name === 'proofAttachmentName') setProofFile(null);
+      return;
+    }
+
+    if (!isAllowedFileExtension(selectedFile.name)) {
+      setErrors((prev) => ({
+        ...prev,
+        [name]: 'Unsupported format. Allowed: PDF, JPG, PNG, HEIC, WebP, XLS, XLSX, DOC, DOCX, CSV',
+      }));
+      e.target.value = '';
+      setFormData((prev) => ({ ...prev, [name]: '' }));
+      if (name === 'vendorBillAttachmentName') setVendorBillFile(null);
+      if (name === 'proofAttachmentName') setProofFile(null);
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: selectedFile.name }));
+    if (name === 'vendorBillAttachmentName') setVendorBillFile(selectedFile);
+    if (name === 'proofAttachmentName') setProofFile(selectedFile);
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
   };
+
 
   const handleAmountChange = (e) => {
     const { name, value } = e.target;
@@ -231,11 +292,14 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
     );
 
   const validateForm = () => {
+    console.log('[FORM TRACE] 1. validateForm() starting execution');
     const next = {};
     if (!formData.entryType) next.entryType = 'Entry Type is required';
     if (!transactionType) next.transactionType = 'Transaction Type is required';
     if (isVendorEntry && !formData.vendorName.trim()) {
       next.vendorName = 'Vendor Name is required';
+    } else if (isVendorEntry && formData.vendorName.trim() === 'Add New Vendor') {
+      next.vendorName = 'Please complete Vendor KYC or select an approved vendor';
     } else if (isVendorEntry && !vendorsList.includes(formData.vendorName.trim())) {
       next.vendorName = 'Select a vendor from the list';
     }
@@ -248,7 +312,7 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
     if (isVendorEntry && (!formData.vendorBillAmount || parseAmount(formData.vendorBillAmount) <= 0)) {
       next.vendorBillAmount = 'Bill Amount is required';
     }
-    if (isVendorEntry && !formData.vendorBillAttachmentName) {
+    if (isVendorEntry && !String(formData.vendorBillAttachmentName || '').trim()) {
       next.vendorBillAttachmentName = 'Vendor Bill attachment is required';
     }
     if (isBranchTransferReceiving) {
@@ -271,7 +335,7 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
     if (isBranchTransferReceiving && !formData.requestedBy.trim()) {
       next.requestedBy = 'Requested By is required';
     }
-    if (!formData.proofAttachmentName) next.proofAttachmentName = 'Proof attachment is required';
+    if (!isVendorEntry && !formData.proofAttachmentName) next.proofAttachmentName = 'Proof attachment is required';
 
     formData.products.forEach((p, i) => {
       if (!p.name) {
@@ -287,42 +351,212 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
       if (!p.count || Number(p.count) <= 0) next[`product_${i}_count`] = 'Must be > 0';
     });
 
+    console.log('[FORM TRACE] 2. validateForm() completed', {
+      errorCount: Object.keys(next).length,
+      errors: next,
+    });
     setErrors(next);
-    return Object.keys(next).length === 0;
+    return next;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('[FORM TRACE] 0. handleSubmit() EXECUTED');
     setSubmitError('');
-    if (!validateForm()) return;
+    setDebugLogs([]);
 
-    setIsSubmitting(true);
-    // Keep the accounting display (for example, "12,389") in the field,
-    // but submit a numeric value so formatted commas can never break saving.
-    const submissionData = {
-      ...formData,
-      transactionType,
-      vendorBillAmount: formData.vendorBillAmount
-        ? parseAmount(formData.vendorBillAmount)
-        : formData.vendorBillAmount,
-    };
-    const result = await submitStorePurchase(submissionData);
-    setIsSubmitting(false);
+    addDebugLog(1, 'Submit Button Clicked & handleSubmit() Called', {
+      formData,
+      userEmail,
+      isVendorEntry,
+      isBranchTransferReceiving,
+    });
 
-    if (!result.ok) {
-      if (result.fieldErrors) setErrors(result.fieldErrors);
-      setSubmitError(result.error || 'Submission failed.');
+    const validationErrors = validateForm();
+    const errorKeys = Object.keys(validationErrors);
+    if (errorKeys.length > 0) {
+      const detailedMsgs = Object.entries(validationErrors)
+        .map(([k, v]) => `${k}: "${v}"`)
+        .join(' | ');
+      const topErrorMsg = `Validation Failed on ${errorKeys.length} field(s): ${detailedMsgs}`;
+      console.log('[FORM TRACE] 3. Client Validation FAILED - Returning at Line 345', validationErrors);
+      setSubmitError(topErrorMsg);
+      addDebugLog(2, 'Client Validation FAILED', { errors: validationErrors, topErrorMsg });
       return;
     }
 
-    setReceipt({
-      refNumber: result.refNumber,
-      createdAt: result.createdAt,
-      sheetSynced: result.sheetSynced,
-      sheetSkipped: result.sheetSkipped,
-      data: submissionData,
-    });
+    console.log('[FORM TRACE] 3. Client Validation PASSED - Proceeding to Server Action');
+    addDebugLog(2, 'Client Validation PASSED', { transactionType, formData });
+
+    setIsSubmitting(true);
+    setUploadProgress(null);
+
+    const supabase = createClient();
+    let userId = 'anonymous';
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (authData?.user?.id) userId = authData.user.id;
+    } catch (e) {
+      console.warn('[STORAGE] User fetch warning:', e);
+    }
+
+    const uploadedPaths = [];
+    let vendorBillStoragePath = '';
+    let vendorBillFileSize = 0;
+    let proofStoragePath = '';
+    let proofFileSize = 0;
+
+    const dateFolder = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+
+    // 1. Upload Vendor Bill file if attached
+    if (vendorBillFile) {
+      try {
+        setUploadProgress({ field: 'Vendor Bill', percent: 5 });
+        const cleanName = vendorBillFile.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+        const path = `${userId}/${dateFolder}/${Date.now()}_${cleanName}`;
+        const isLarge = vendorBillFile.size >= 6 * 1024 * 1024;
+
+        const { data: storageData, error: storageErr } = await supabase.storage
+          .from('store-purchase-attachments')
+          .upload(path, vendorBillFile, {
+            cacheControl: '3600',
+            upsert: false,
+            resumable: isLarge,
+            onUploadProgress: (evt) => {
+              if (evt.total) {
+                const pct = Math.round((evt.loaded / evt.total) * 100);
+                setUploadProgress({ field: 'Vendor Bill', percent: pct });
+              }
+            },
+          });
+
+        if (storageErr) {
+          throw new Error(`Vendor Bill upload failed: ${storageErr.message}`);
+        }
+
+        vendorBillStoragePath = storageData.path || path;
+        vendorBillFileSize = vendorBillFile.size;
+        uploadedPaths.push(vendorBillStoragePath);
+        addDebugLog(3, 'Vendor Bill Uploaded to Supabase Storage', { path: vendorBillStoragePath });
+      } catch (err) {
+        setIsSubmitting(false);
+        setUploadProgress(null);
+        const errMsg = err.message || 'Storage upload failed';
+        setSubmitError(errMsg);
+        addDebugLog(3, 'Vendor Bill Upload FAILED', { error: errMsg });
+        return;
+      }
+    }
+
+    // 2. Upload Proof file if attached
+    if (proofFile) {
+      try {
+        setUploadProgress({ field: 'Proof Attachment', percent: 5 });
+        const cleanName = proofFile.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+        const path = `${userId}/${dateFolder}/${Date.now()}_${cleanName}`;
+        const isLarge = proofFile.size >= 6 * 1024 * 1024;
+
+        const { data: storageData, error: storageErr } = await supabase.storage
+          .from('store-purchase-attachments')
+          .upload(path, proofFile, {
+            cacheControl: '3600',
+            upsert: false,
+            resumable: isLarge,
+            onUploadProgress: (evt) => {
+              if (evt.total) {
+                const pct = Math.round((evt.loaded / evt.total) * 100);
+                setUploadProgress({ field: 'Proof Attachment', percent: pct });
+              }
+            },
+          });
+
+        if (storageErr) {
+          throw new Error(`Proof attachment upload failed: ${storageErr.message}`);
+        }
+
+        proofStoragePath = storageData.path || path;
+        proofFileSize = proofFile.size;
+        uploadedPaths.push(proofStoragePath);
+        addDebugLog(3, 'Proof Attachment Uploaded to Supabase Storage', { path: proofStoragePath });
+      } catch (err) {
+        if (uploadedPaths.length > 0) {
+          await supabase.storage.from('store-purchase-attachments').remove(uploadedPaths);
+        }
+        setIsSubmitting(false);
+        setUploadProgress(null);
+        const errMsg = err.message || 'Proof storage upload failed';
+        setSubmitError(errMsg);
+        addDebugLog(3, 'Proof Upload FAILED', { error: errMsg });
+        return;
+      }
+    }
+
+    setUploadProgress({ field: 'Form Record', percent: 100 });
+
+    const rawAmount = parseAmount(formData.vendorBillAmount);
+    const submissionData = {
+      ...formData,
+      transactionType,
+      vendorBillAmount: Number.isFinite(rawAmount) ? rawAmount : formData.vendorBillAmount,
+      vendorBillStoragePath,
+      vendorBillFileSize,
+      proofStoragePath,
+      proofFileSize,
+    };
+
+    console.log('[FORM TRACE] 4. EXECUTING submitStorePurchase() Server Action', submissionData);
+    addDebugLog(3, 'Dispatching Server Action: submitStorePurchase', submissionData);
+
+    try {
+      const result = await submitStorePurchase(submissionData);
+      console.log('[FORM TRACE] 5. submitStorePurchase() RETURNED RESULT', result);
+      setIsSubmitting(false);
+      setUploadProgress(null);
+
+      addDebugLog(4, 'Server Action Response Received', result);
+
+      if (!result.ok) {
+        if (uploadedPaths.length > 0) {
+          await supabase.storage.from('store-purchase-attachments').remove(uploadedPaths);
+          console.log('[STORAGE] Cleaned up uploaded files after server error:', uploadedPaths);
+        }
+        if (result.fieldErrors) setErrors(result.fieldErrors);
+        const serverErrorText = result.error || 'Server action returned failed status.';
+        setSubmitError(serverErrorText);
+        addDebugLog(5, 'Submission FAILED on Server', {
+          error: serverErrorText,
+          fieldErrors: result.fieldErrors,
+          debugDetails: result.debugDetails,
+        });
+        return;
+      }
+
+      addDebugLog(5, 'Submission SUCCESSFUL', {
+        refNumber: result.refNumber,
+        sheetSynced: result.sheetSynced,
+        billingRecorded: result.billingRecorded,
+      });
+
+      setReceipt({
+        refNumber: result.refNumber,
+        createdAt: result.createdAt,
+        sheetSynced: result.sheetSynced,
+        sheetSkipped: result.sheetSkipped,
+        data: submissionData,
+      });
+    } catch (err) {
+      setIsSubmitting(false);
+      setUploadProgress(null);
+      if (uploadedPaths.length > 0) {
+        await supabase.storage.from('store-purchase-attachments').remove(uploadedPaths);
+      }
+      console.error('[FORM TRACE] 5. submitStorePurchase() THREW EXCEPTION', err);
+      const excMsg = `Server Action Threw Exception: ${err.message || String(err)}`;
+      setSubmitError(excMsg);
+      addDebugLog(4, 'Server Action Exception Thrown', { error: err.message, stack: err.stack });
+    }
   };
+
 
   const openDatePicker = () => dateInputRef.current?.showPicker?.();
   const openVendorInvoiceDatePicker = () => vendorInvoiceDateInputRef.current?.showPicker?.();
@@ -346,6 +580,9 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
       proofAttachmentName: '',
       remarks: '',
     });
+    setVendorBillFile(null);
+    setProofFile(null);
+    setUploadProgress(null);
     setErrors({});
     setSubmitError('');
     setReceipt(null);
@@ -464,6 +701,24 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
         <div className={styles.userInfo}>
           <div className={styles.avatar}>{(userEmail[0] || '?').toUpperCase()}</div>
           <span>{userEmail}</span>
+          <button
+            type="button"
+            onClick={() => setDebugMode((prev) => !prev)}
+            style={{
+              padding: '4px 10px',
+              fontSize: '12px',
+              fontWeight: 600,
+              borderRadius: '6px',
+              border: '1px solid #d4af37',
+              background: debugMode ? '#d4af37' : 'transparent',
+              color: debugMode ? '#111' : '#d4af37',
+              cursor: 'pointer',
+              marginLeft: '12px',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {debugMode ? '🛠️ Debug Mode: ON' : '🛠️ Debug Mode'}
+          </button>
         </div>
       </header>
 
@@ -651,11 +906,12 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
                   </div>
 
                   <div className={styles.field}>
-                    <label className={styles.label} htmlFor="vendorBillAttachmentName">Vendor Bill *</label>
+                    <label className={styles.label} htmlFor="vendorBillAttachmentName">Vendor Bill (PDF, Images, Office docs) *</label>
                     <input
                       id="vendorBillAttachmentName"
                       name="vendorBillAttachmentName"
                       type="file"
+                      accept={ACCEPT_FILE_TYPES}
                       onChange={handleFileChange}
                       className={`${styles.input} ${errors.vendorBillAttachmentName ? styles.inputError : ''}`}
                     />
@@ -818,6 +1074,7 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
                   id="proofAttachmentName"
                   name="proofAttachmentName"
                   type="file"
+                  accept={ACCEPT_FILE_TYPES}
                   onChange={handleFileChange}
                   className={`${styles.input} ${errors.proofAttachmentName ? styles.inputError : ''}`}
                 />
@@ -848,6 +1105,18 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
             </div>
           </div>
 
+          {uploadProgress && (
+            <div style={{ marginBottom: '16px', padding: '12px 16px', background: '#1f2937', borderRadius: '8px', border: '1px solid #374151' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#f3f4f6', fontWeight: 600, marginBottom: '6px' }}>
+                <span>Uploading {uploadProgress.field}...</span>
+                <span style={{ color: '#d4af37' }}>{uploadProgress.percent}%</span>
+              </div>
+              <div style={{ width: '100%', background: '#374151', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ width: `${uploadProgress.percent}%`, background: '#d4af37', height: '100%', borderRadius: '3px', transition: 'width 0.2s ease' }}></div>
+              </div>
+            </div>
+          )}
+
           {submitError && <div className={styles.submitError} role="alert">{submitError}</div>}
 
           <div className={styles.actions}>
@@ -857,6 +1126,50 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
             </button>
           </div>
         </form>
+
+        {debugMode && (
+          <div style={{ marginTop: '24px', padding: '18px', background: '#111827', color: '#34d399', borderRadius: '10px', border: '1px solid #374151', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: '12px', lineHeight: '1.5' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid #374151', paddingBottom: '10px' }}>
+              <span style={{ fontWeight: 700, color: '#f3f4f6', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🛠️ Submission Flow Debug Inspector
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setDebugLogs([])}
+                  style={{ background: '#374151', color: '#e5e7eb', border: 'none', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+                >
+                  Clear Logs
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(JSON.stringify(debugLogs, null, 2))}
+                  style={{ background: '#d4af37', color: '#111827', fontWeight: 600, border: 'none', padding: '4px 10px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px' }}
+                >
+                  Copy JSON Trace
+                </button>
+              </div>
+            </div>
+            {debugLogs.length === 0 ? (
+              <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>
+                No submission attempted yet. Click "Submit Form" to run and record step-by-step trace.
+              </div>
+            ) : (
+              debugLogs.map((log) => (
+                <div key={log.id} style={{ marginBottom: '14px', borderBottom: '1px solid #1f2937', paddingBottom: '10px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ color: '#fbbf24', fontWeight: 700 }}>
+                      [{log.timestamp}] STEP {log.step}: <span style={{ color: '#f9fafb' }}>{log.title}</span>
+                    </span>
+                  </div>
+                  <pre style={{ background: '#030712', padding: '10px', borderRadius: '6px', overflowX: 'auto', color: '#38bdf8', margin: '4px 0 0 0', fontSize: '11px', border: '1px solid #111827' }}>
+                    {JSON.stringify(log.details, null, 2)}
+                  </pre>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
 
       {receipt && (

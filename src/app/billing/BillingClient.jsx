@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
-import { endorseVendorBill, recordVendorPayment } from './actions';
+import { endorseVendorBill, recordVendorPayment, getBillAttachmentSignedUrl } from './actions';
 import { formatDate } from '@/lib/date';
 import styles from './page.module.css';
 
@@ -27,6 +27,23 @@ export default function BillingClient({ bills }) {
   const [busy, setBusy] = useState(null);
   const [payment, setPayment] = useState({});
   const [, startTransition] = useTransition();
+
+  const handleViewAttachment = async (billId) => {
+    setBusy(`file:${billId}`);
+    setError('');
+    try {
+      const res = await getBillAttachmentSignedUrl(billId);
+      setBusy(null);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      window.open(res.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      setBusy(null);
+      setError('Could not open attachment.');
+    }
+  };
 
   const submitTerms = (billId) => {
     setBusy(billId);
@@ -57,6 +74,7 @@ export default function BillingClient({ bills }) {
             <tr>
               <th>Vendor</th>
               <th>Bill No.</th>
+              <th>Attachment</th>
               <th>Invoice Date</th>
               <th>Due Date</th>
               <th>Amount</th>
@@ -70,6 +88,28 @@ export default function BillingClient({ bills }) {
               <tr key={bill.id}>
                 <td>{bill.vendor_name}</td>
                 <td>{bill.bill_number}</td>
+                <td>
+                  {bill.attachment_name ? (
+                    <button
+                      type="button"
+                      onClick={() => handleViewAttachment(bill.id)}
+                      disabled={busy === `file:${bill.id}`}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: '#d4af37',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        padding: 0,
+                      }}
+                    >
+                      {busy === `file:${bill.id}` ? 'Loading...' : `📎 ${bill.attachment_name}`}
+                    </button>
+                  ) : (
+                    '—'
+                  )}
+                </td>
                 <td>{formatDate(bill.invoice_date)}</td>
                 <td>{bill.due_date ? formatDate(bill.due_date) : 'Hidden until endorsed'}</td>
                 <td>{money(bill.bill_amount)}</td>

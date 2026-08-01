@@ -69,3 +69,48 @@ export async function recordVendorPayment({ billId, paymentDate, amount, payment
   revalidatePath('/admin/kpi');
   return { ok: true };
 }
+
+export async function getBillAttachmentSignedUrl(billId) {
+  const user = await requireAccounts();
+  if (!billId) {
+    return { ok: false, error: 'Bill ID is required.' };
+  }
+
+  const supabase = await createClient();
+  const { data: bill, error: billError } = await supabase
+    .from('vendor_bills')
+    .select('id, attachment_name, source_submission_id')
+    .eq('id', billId)
+    .single();
+
+  if (billError || !bill) {
+    return { ok: false, error: 'Vendor bill record not found.' };
+  }
+
+  let storagePath = null;
+  if (bill.source_submission_id) {
+    const { data: submission } = await supabase
+      .from('submissions')
+      .select('payload')
+      .eq('id', bill.source_submission_id)
+      .single();
+
+    storagePath = submission?.payload?.vendorBillStoragePath || null;
+  }
+
+  if (!storagePath) {
+    return { ok: false, error: 'No stored binary attachment path associated with this bill.' };
+  }
+
+  const { data, error: signedError } = await supabase.storage
+    .from('store-purchase-attachments')
+    .createSignedUrl(storagePath, 300); // 5 mins
+
+  if (signedError || !data?.signedUrl) {
+    console.error('[billing] createSignedUrl failed', signedError);
+    return { ok: false, error: 'Could not generate secure view URL.' };
+  }
+
+  return { ok: true, signedUrl: data.signedUrl, fileName: bill.attachment_name };
+}
+

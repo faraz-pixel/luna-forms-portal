@@ -26,13 +26,22 @@ export async function submitStorePurchase(payload) {
   const grants = await getGrantMap(user);
 
   if (!grants[FORM_SLUG]) {
-    return { ok: false, error: 'You do not have access to this form.' };
+    return {
+      ok: false,
+      error: 'You do not have access to this form.',
+      debugDetails: { type: 'GRANT_DENIED', formSlug: FORM_SLUG, grants },
+    };
   }
 
   const allowedVendors = await getActiveVendors();
   const { valid, errors, value } = validateStorePurchase(payload, allowedVendors);
   if (!valid) {
-    return { ok: false, fieldErrors: errors, error: 'Please fix the highlighted fields.' };
+    return {
+      ok: false,
+      fieldErrors: errors,
+      error: `Server validation failed: ${Object.entries(errors).map(([k, v]) => `${k} (${v})`).join(', ')}`,
+      debugDetails: { type: 'SERVER_VALIDATION_FAILED', errors, payload },
+    };
   }
 
   if (isLocalDemoMode() && !isSupabaseConfigured()) {
@@ -42,10 +51,34 @@ export async function submitStorePurchase(payload) {
       createdAt: new Date().toISOString(),
       sheetSynced: false,
       sheetSkipped: true,
+      debugDetails: { type: 'DEMO_MODE_SUBMISSION' },
     };
   }
 
   const supabase = await createClient();
+
+  // Verify storage paths belong to current user if provided
+  const uploadedStoragePaths = [];
+  if (value.vendorBillStoragePath) {
+    if (!value.vendorBillStoragePath.startsWith(`${user.id}/`)) {
+      return {
+        ok: false,
+        error: 'Invalid storage path ownership for vendor bill attachment.',
+        debugDetails: { type: 'STORAGE_PATH_OWNERSHIP_MISMATCH', path: value.vendorBillStoragePath, userId: user.id },
+      };
+    }
+    uploadedStoragePaths.push(value.vendorBillStoragePath);
+  }
+  if (value.proofStoragePath) {
+    if (!value.proofStoragePath.startsWith(`${user.id}/`)) {
+      return {
+        ok: false,
+        error: 'Invalid storage path ownership for proof attachment.',
+        debugDetails: { type: 'STORAGE_PATH_OWNERSHIP_MISMATCH', path: value.proofStoragePath, userId: user.id },
+      };
+    }
+    uploadedStoragePaths.push(value.proofStoragePath);
+  }
 
   // ref_number is UNIQUE; on the rare collision, try a fresh one.
   let inserted = null;
@@ -77,12 +110,32 @@ export async function submitStorePurchase(payload) {
 
   if (!inserted) {
     console.error('[store-purchase] insert failed', lastError);
+
+    // Cleanup orphaned storage objects if database save failed
+    if (uploadedStoragePaths.length > 0) {
+      try {
+        await supabase.storage
+          .from('store-purchase-attachments')
+          .remove(uploadedStoragePaths);
+        console.log('[store-purchase] Orphaned storage files cleaned up:', uploadedStoragePaths);
+      } catch (cleanupErr) {
+        console.error('[store-purchase] Failed to clean up orphaned storage files:', cleanupErr);
+      }
+    }
+
     return {
       ok: false,
       error:
         lastError?.code === '42501'
           ? 'You do not have permission to submit this form.'
-          : 'Could not save the submission. Please try again.',
+          : `Could not save submission: ${lastError?.message || lastError?.code || 'Database insert failed.'}`,
+      debugDetails: {
+        type: 'SUPABASE_INSERT_FAILED',
+        code: lastError?.code,
+        message: lastError?.message,
+        details: lastError?.details,
+        hint: lastError?.hint,
+      },
     };
   }
 
@@ -145,3 +198,27 @@ export async function submitStorePurchase(payload) {
     billingRecorded,
   };
 }
+
+/**
+ * Generate a short-lived signed download/view URL for an attachment in private storage.
+ */
+export async function getAttachmentSignedUrl(storagePath) {
+  const user = await requireUser();
+  if (!storagePath) {
+    return { ok: false, error: 'No storage path provided.' };
+  }
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.storage
+    .from('store-purchase-attachments')
+    .createSignedUrl(storagePath, 300); // 5 minutes validity
+
+  if (error || !data?.signedUrl) {
+    console.error('[storage] createSignedUrl failed:', error);
+    return { ok: false, error: 'Could not generate secure view URL.' };
+  }
+
+  return { ok: true, signedUrl: data.signedUrl };
+}
+
