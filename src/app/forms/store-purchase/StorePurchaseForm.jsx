@@ -588,75 +588,13 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
     setReceipt(null);
   };
 
+  // Print the on-page receipt document. The Print control sits OUTSIDE the receipt
+  // container with a `noPrint` class, so @media print hides it and only the A4 receipt
+  // document prints. No print dialog is opened on page load; printing happens only here.
   const handlePrint = useCallback(() => {
     if (!receipt) return;
-    const { refNumber, data } = receipt;
-
-    const rows = data.products
-      .map((p, i) => `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${esc(p.unit)}</td><td>${esc(p.count)}</td></tr>`)
-      .join('');
-
-    const html = `
-      <html>
-      <head>
-        <title>Stock Inward Receipt - ${esc(refNumber)}</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 40px; color: #1a1a1a; max-width: 700px; margin: 0 auto; }
-          .receipt-header { text-align: center; margin-bottom: 32px; padding-bottom: 20px; border-bottom: 2px solid #d4af37; }
-          .receipt-header h1 { font-size: 22px; color: #111; margin-bottom: 4px; }
-          .receipt-header p { font-size: 12px; color: #666; }
-          .meta-row { display: flex; justify-content: space-between; background: #f8f8f6; padding: 12px 16px; border-radius: 8px; margin-bottom: 24px; font-size: 13px; }
-          .meta-row div span { font-weight: 600; color: #111; }
-          .section-title { font-size: 14px; font-weight: 600; color: #d4af37; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-          .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 28px; }
-          .info-item label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
-          .info-item p { font-size: 15px; font-weight: 500; margin-top: 4px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
-          th { background: #f8f8f6; text-align: left; padding: 10px 14px; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #eee; }
-          td { padding: 10px 14px; font-size: 14px; border-bottom: 1px solid #f0f0f0; }
-          tr:last-child td { border-bottom: none; }
-          .remarks { background: #f8f8f6; padding: 14px 16px; border-radius: 8px; font-size: 13px; color: #555; margin-bottom: 28px; }
-          .footer { text-align: center; padding-top: 20px; border-top: 1px solid #eee; font-size: 11px; color: #aaa; }
-          @media print { body { padding: 20px; } }
-        </style>
-      </head>
-      <body>
-        <div class="receipt-header">
-          <h1>&#9749; Coffee Cartel</h1>
-          <p>Stock Inward Receipt</p>
-        </div>
-        <div class="meta-row">
-          <div>Ref: <span>${esc(refNumber)}</span></div>
-          <div>Date: <span>${esc(formatDate(data.date))}</span></div>
-        </div>
-        <div class="section-title">Transaction Details</div>
-        <div class="info-grid">
-          <div class="info-item"><label>Entry Type</label><p>${esc(data.entryType)}</p></div>
-          <div class="info-item"><label>Type</label><p>${esc(data.transactionType)}</p></div>
-          <div class="info-item"><label>Location</label><p>${esc(data.location)}</p></div>
-          <div class="info-item"><label>Submitted By</label><p>${esc(userEmail)}</p></div>
-          ${data.vendorName ? `<div class="info-item"><label>Vendor Name</label><p>${esc(data.vendorName)}</p></div>` : ''}
-          ${data.vendorInvoiceNumber ? `<div class="info-item"><label>Vendor Bill No.</label><p>${esc(data.vendorInvoiceNumber)}</p></div>` : ''}
-          ${data.vendorBillAmount ? `<div class="info-item"><label>Bill Amount</label><p>${esc(Number(data.vendorBillAmount).toLocaleString())}</p></div>` : ''}
-        </div>
-        <div class="section-title">Products</div>
-        <table>
-          <thead><tr><th>#</th><th>Product</th><th>Unit</th><th>Count</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-        ${data.remarks ? `<div class="section-title">Remarks</div><div class="remarks">${esc(data.remarks)}</div>` : ''}
-        <div class="footer">Generated on ${esc(new Date().toLocaleString())} &bull; Luna Forms Portal</div>
-      </body>
-      </html>
-    `;
-
-    const win = window.open('', '_blank', 'width=800,height=600');
-    if (!win) return;
-    win.document.write(html);
-    win.document.close();
-    win.onload = () => { win.focus(); win.print(); };
-  }, [receipt, userEmail]);
+    window.print();
+  }, [receipt]);
 
   const handleDownloadImage = useCallback(async () => {
     const el = document.getElementById('receiptCapture');
@@ -682,6 +620,106 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
   }, [receipt]);
 
   const receiptData = receipt?.data ?? formData;
+
+  const formatAmount = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n.toLocaleString('en-US') : value || '—';
+  };
+
+  // Shared receipt document renderer. Used for both the on-screen preview and the
+  // hidden PNG-export copy, and it is the only element that appears in print output.
+  const receiptDoc = (
+    <div className={styles.receiptDoc}>
+      <div className={styles.receiptHeader}>
+        <div className={styles.receiptBrand}>☕ Coffee Cartel</div>
+        <div className={styles.receiptTitle}>Stock Inward Receipt</div>
+      </div>
+
+      <div className={styles.receiptMeta}>
+        <div className={styles.receiptMetaItem}>
+          <span>Store / Stock Ref:</span>
+          <strong>{receipt?.refNumber ?? ''}</strong>
+        </div>
+        <div className={styles.receiptMetaItem}>
+          <span>Date:</span>
+          <strong>{formatDate(receiptData.date)}</strong>
+        </div>
+      </div>
+
+      <div className={styles.receiptColumns}>
+        <div className={styles.receiptSection}>
+          <div className={styles.receiptSectionTitle}>Vendor Details</div>
+          <div className={styles.receiptField}>
+            <label>Vendor Name</label>
+            <p>{receiptData.vendorName || '—'}</p>
+          </div>
+          <div className={styles.receiptField}>
+            <label>Vendor Invoice Number</label>
+            <p>{receiptData.vendorInvoiceNumber || '—'}</p>
+          </div>
+          <div className={styles.receiptField}>
+            <label>Bill Amount</label>
+            <p>{formatAmount(receiptData.vendorBillAmount)}</p>
+          </div>
+          <div className={styles.receiptField}>
+            <label>Submitted By</label>
+            <p>{userEmail}</p>
+          </div>
+        </div>
+
+        <div className={styles.receiptSection}>
+          <div className={styles.receiptSectionTitle}>Transaction Details</div>
+          <div className={styles.receiptField}>
+            <label>Entry Type</label>
+            <p>{receiptData.entryType || '—'}</p>
+          </div>
+          <div className={styles.receiptField}>
+            <label>Record Type</label>
+            <p>Inward</p>
+          </div>
+          <div className={styles.receiptField}>
+            <label>Location</label>
+            <p>{receiptData.location || '—'}</p>
+          </div>
+          <div className={styles.receiptField}>
+            <label>Date</label>
+            <p>{formatDate(receiptData.date)}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.receiptSectionTitle}>Products</div>
+      <table className={styles.receiptTable}>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Product</th>
+            <th>Unit</th>
+            <th>Count</th>
+          </tr>
+        </thead>
+        <tbody>
+          {receiptData.products.map((p, i) => (
+            <tr key={i}>
+              <td>{i + 1}</td>
+              <td>{p.name}</td>
+              <td>{p.unit}</td>
+              <td>{p.count}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {receiptData.remarks && (
+        <div className={styles.receiptRemarksBlock}>
+          <div className={styles.receiptSectionTitle}>Remarks</div>
+          <div className={styles.receiptRemarks}>{receiptData.remarks}</div>
+        </div>
+      )}
+
+      <div className={styles.receiptFooter}>Luna Forms Portal • Coffee Cartel</div>
+    </div>
+  );
 
   return (
     <div className={styles.container}>
@@ -1175,43 +1213,41 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
       {receipt && (
         <div className={styles.modalOverlay}>
           <div className={styles.modal}>
-            <div className={styles.checkIcon}>✓</div>
-            <h2>Submission Successful!</h2>
-            <p>Your stock inward entry has been recorded.</p>
+            <div className="noPrint">
+              <div className={styles.checkIcon}>✓</div>
+              <h2>Submission Successful!</h2>
+              <p>Your stock inward entry has been recorded.</p>
 
-            <div className={styles.modalDetails}>
-              <div><span>Ref Number:</span> {receipt.refNumber}</div>
-              <div><span>Date:</span> {formatDate(receipt.data.date)}</div>
-              <div><span>Products:</span> {receipt.data.products.length} item(s)</div>
+              {!receipt.sheetSynced && !receipt.sheetSkipped && (
+                <p className={styles.sheetWarning}>
+                  Saved, but the Google Sheet copy did not go through. The record is
+                  safe — ask the admin to re-sync it.
+                </p>
+              )}
+
+              <div className={styles.receiptActions}>
+                <button className={styles.btnIcon} onClick={handlePrint} title="Print Receipt">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                  </svg>
+                  Print
+                </button>
+                <button className={styles.btnIcon} onClick={handleDownloadImage} title="Download as Image">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                  </svg>
+                  Download
+                </button>
+              </div>
             </div>
 
-            {!receipt.sheetSynced && !receipt.sheetSkipped && (
-              <p className={styles.sheetWarning}>
-                Saved, but the Google Sheet copy did not go through. The record is
-                safe — ask the admin to re-sync it.
-              </p>
-            )}
+            {receiptDoc}
 
-            <div className={styles.receiptActions}>
-              <button className={styles.btnIcon} onClick={handlePrint} title="Print Receipt">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                  <rect x="6" y="14" width="12" height="8"></rect>
-                </svg>
-                Print
-              </button>
-              <button className={styles.btnIcon} onClick={handleDownloadImage} title="Download as Image">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="7 10 12 15 17 10"></polyline>
-                  <line x1="12" y1="15" x2="12" y2="3"></line>
-                </svg>
-                Download
-              </button>
-            </div>
-
-            <div className={styles.modalActions}>
+            <div className={`${styles.modalActions} noPrint`}>
               <button className={styles.btnSecondary} onClick={resetForm} style={{ flex: 1 }}>
                 Submit Another
               </button>
@@ -1225,53 +1261,9 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
         </div>
       )}
 
-      {/* Hidden receipt used only for the PNG export */}
-      <div id="receiptCapture" style={{ display: 'none', background: '#fff', padding: '40px', fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif', color: '#1a1a1a' }}>
-        <div style={{ textAlign: 'center', marginBottom: '28px', paddingBottom: '16px', borderBottom: '2px solid #d4af37' }}>
-          <h1 style={{ fontSize: '22px', margin: '0 0 4px 0' }}>☕ Coffee Cartel</h1>
-          <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>Stock Inward Receipt</p>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f8f8f6', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', fontSize: '13px' }}>
-          <div>Ref: <strong>{receipt?.refNumber ?? ''}</strong></div>
-          <div>Date: <strong>{formatDate(receiptData.date)}</strong></div>
-        </div>
-        <div style={{ fontSize: '13px', fontWeight: 600, color: '#d4af37', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Transaction Details</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '28px' }}>
-          <div><div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Entry Type</div><div style={{ fontSize: '15px', fontWeight: 500, marginTop: '4px' }}>{receiptData.entryType || '—'}</div></div>
-          <div><div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Type</div><div style={{ fontSize: '15px', fontWeight: 500, marginTop: '4px' }}>{receiptData.transactionType || '—'}</div></div>
-          <div><div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Location</div><div style={{ fontSize: '15px', fontWeight: 500, marginTop: '4px' }}>{receiptData.location || '—'}</div></div>
-          <div><div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Submitted By</div><div style={{ fontSize: '15px', fontWeight: 500, marginTop: '4px' }}>{userEmail}</div></div>
-          {receiptData.vendorName && <div><div style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase' }}>Vendor Name</div><div style={{ fontSize: '15px', fontWeight: 500, marginTop: '4px' }}>{receiptData.vendorName}</div></div>}
-        </div>
-        <div style={{ fontSize: '13px', fontWeight: 600, color: '#d4af37', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Products</div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '28px' }}>
-          <thead>
-            <tr>
-              {['#', 'Product', 'Unit', 'Count'].map((h) => (
-                <th key={h} style={{ background: '#f8f8f6', textAlign: 'left', padding: '10px 14px', fontSize: '12px', color: '#666', textTransform: 'uppercase', borderBottom: '2px solid #eee' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {receiptData.products.map((p, i) => (
-              <tr key={i}>
-                <td style={{ padding: '10px 14px', fontSize: '14px', borderBottom: '1px solid #f0f0f0' }}>{i + 1}</td>
-                <td style={{ padding: '10px 14px', fontSize: '14px', borderBottom: '1px solid #f0f0f0' }}>{p.name}</td>
-                <td style={{ padding: '10px 14px', fontSize: '14px', borderBottom: '1px solid #f0f0f0' }}>{p.unit}</td>
-                <td style={{ padding: '10px 14px', fontSize: '14px', borderBottom: '1px solid #f0f0f0' }}>{p.count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {receiptData.remarks && (
-          <>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: '#d4af37', marginBottom: '8px', textTransform: 'uppercase' }}>Remarks</div>
-            <div style={{ background: '#f8f8f6', padding: '14px 16px', borderRadius: '8px', fontSize: '13px', color: '#555', marginBottom: '28px' }}>{receiptData.remarks}</div>
-          </>
-        )}
-        <div style={{ textAlign: 'center', paddingTop: '16px', borderTop: '1px solid #eee', fontSize: '11px', color: '#aaa' }}>
-          Luna Forms Portal • Coffee Cartel
-        </div>
+      {/* Hidden copy of the receipt used only for the PNG export */}
+      <div id="receiptCapture" style={{ display: 'none' }}>
+        {receiptDoc}
       </div>
     </div>
   );
