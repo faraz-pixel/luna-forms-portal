@@ -21,7 +21,22 @@ export default async function BillingPage({ searchParams }) {
   if (status) query = query.eq('payable_status', status);
   if (vendor) query = query.ilike('vendor_name', `%${vendor}%`);
 
-  const { data: bills, error } = await query;
+  const { data: summary, error } = await query;
+
+  // vendor_payables_summary does not expose attachment metadata, so fetch the
+  // stored file name (and the submission link used for signed URLs) directly
+  // from vendor_bills and merge it onto each row. Rows without a stored
+  // attachment keep attachment_name as '' so the UI renders "—".
+  let bills = summary ?? [];
+  if (bills.length > 0) {
+    const ids = bills.map((b) => b.id);
+    const { data: billRows } = await supabase
+      .from('vendor_bills')
+      .select('id, attachment_name')
+      .in('id', ids);
+    const attachmentByBill = new Map((billRows ?? []).map((r) => [r.id, r.attachment_name || '']));
+    bills = bills.map((b) => ({ ...b, attachment_name: attachmentByBill.get(b.id) ?? '' }));
+  }
 
   return (
     <div className={styles.container}>

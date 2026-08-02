@@ -484,6 +484,24 @@ a:hover {
   }
 }
 
+/* Reusable: exclude any element from printed/PDF output.
+   Add class="noPrint" to controls (e.g. Print/Download buttons, nav, back links)
+   that must stay on screen but never appear in print. */
+.noPrint { }
+
+@media print {
+  .noPrint { display: none !important; }
+
+  /* Ensure the printed page renders on a plain white background regardless of
+     the app's dark theme, so the receipt prints cleanly on A4. */
+  html,
+  body {
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 @media (max-width: 768px) {
   :root {
     --space-xl: 1.5rem;

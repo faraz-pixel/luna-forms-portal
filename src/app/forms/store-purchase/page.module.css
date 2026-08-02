@@ -516,8 +516,10 @@
   padding: 3rem;
   border-radius: 20px;
   text-align: center;
-  max-width: 500px;
+  max-width: 780px;
   width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
   animation: scaleUp 0.3s ease;
 }
@@ -880,4 +882,214 @@
   line-height: 1.5;
   margin: 0 0 1rem;
   text-align: left;
+}
+
+/* ── Stock Inward Receipt document ────────────────────────── */
+
+.receiptDoc {
+  background: #fff;
+  color: #1a1a1a;
+  border-radius: 10px;
+  padding: 36px 40px;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  text-align: left;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.receiptHeader {
+  text-align: center;
+  margin-bottom: 28px;
+  padding-bottom: 18px;
+  border-bottom: 2px solid #d4af37;
+}
+
+.receiptBrand {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111;
+}
+
+.receiptTitle {
+  font-size: 13px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.receiptMeta {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: #f8f8f6;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  font-size: 13px;
+}
+
+.receiptMetaItem span {
+  color: #666;
+}
+
+.receiptMetaItem strong {
+  color: #111;
+  margin-left: 6px;
+}
+
+.receiptColumns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  margin-bottom: 24px;
+}
+
+.receiptSectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #d4af37;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.receiptSection {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.receiptField {
+  margin-bottom: 12px;
+}
+
+.receiptField label {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.receiptField p {
+  margin: 4px 0 0;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.receiptTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.receiptTable th {
+  background: #f8f8f6;
+  text-align: left;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #eee;
+}
+
+.receiptTable td {
+  padding: 10px 14px;
+  font-size: 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.receiptRemarksBlock {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.receiptRemarks {
+  background: #f8f8f6;
+  padding: 14px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #555;
+  margin-bottom: 24px;
+}
+
+.receiptFooter {
+  text-align: center;
+  padding-top: 16px;
+  border-top: 1px solid #eee;
+  font-size: 11px;
+  color: #aaa;
+}
+
+/* Responsive: receipt collapses to a single column on mobile */
+@media (max-width: 640px) {
+  .receiptDoc {
+    padding: 24px 18px;
+  }
+
+  .receiptColumns {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+/* ── Print: only the receipt document; hide all app chrome ── */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  .container {
+    background: #fff !important;
+    padding: 0 !important;
+  }
+
+  .headerBar,
+  .formCard {
+    display: none !important;
+  }
+
+  .modalOverlay {
+    position: static !important;
+    background: #fff !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    padding: 0 !important;
+    height: auto !important;
+  }
+
+  .modal {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    color: #000 !important;
+    text-align: left !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
+  .receiptDoc {
+    box-shadow: none !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .receiptColumns,
+  .receiptSection,
+  .receiptTable,
+  .receiptRemarksBlock {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }

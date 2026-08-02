@@ -22,8 +22,10 @@ export async function getActiveVendors() {
       .eq('status', 'Approved')
       .order('name');
 
-    if (error || !data) {
-      console.error('Error fetching vendors from Supabase, falling back to defaults:', error);
+    if (error || !data || data.length === 0) {
+      if (error) {
+        console.error('Error fetching vendors from Supabase, falling back to defaults:', error);
+      }
       return APPROVED_VENDOR_NAMES;
     }
 
@@ -53,8 +55,10 @@ export async function getActiveVendorMappings() {
       .eq('status', 'Approved')
       .order('name');
 
-    if (error || !data) {
-      console.error('Error fetching vendor mappings from Supabase, using defaults:', error);
+    if (error || !data || data.length === 0) {
+      if (error) {
+        console.error('Error fetching vendor mappings from Supabase, using defaults:', error);
+      }
       return APPROVED_VENDOR_NAMES.map((name, i) => ({ id: `fallback-id-${i}`, name }));
     }
 

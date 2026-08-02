@@ -11,6 +11,19 @@ import { parseAmount } from './amount';
 
 export const FORM_SLUG = 'store-purchase';
 
+export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+export const ALLOWED_EXTENSIONS = [
+  '.pdf', '.jpg', '.jpeg', '.png', '.heic', '.heif', '.webp',
+  '.xls', '.xlsx', '.doc', '.docx', '.csv',
+];
+export const ACCEPT_FILE_TYPES = ALLOWED_EXTENSIONS.join(',');
+
+export function isAllowedFileExtension(filename) {
+  if (!filename) return false;
+  const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase();
+  return ALLOWED_EXTENSIONS.includes(ext);
+}
+
 export const ENTRY_TYPES = [
   'Vendor Billing / Direct Purchase',
   'Commissary Dispatch to Branch',
@@ -63,6 +76,8 @@ export function validateStorePurchase(raw, allowedVendors = APPROVED_VENDOR_NAME
   if (entryType === 'Vendor Billing / Direct Purchase') {
     if (!vendorName) {
       errors.vendorName = 'Vendor name is required for vendor entries';
+    } else if (vendorName === 'Add New Vendor') {
+      errors.vendorName = 'Please complete Vendor KYC or select an approved vendor';
     } else if (!allowedVendors.includes(vendorName)) {
       errors.vendorName = 'Select a vendor from the list';
     }
@@ -76,6 +91,9 @@ export function validateStorePurchase(raw, allowedVendors = APPROVED_VENDOR_NAME
   const vendorInvoiceDate = String(raw?.vendorInvoiceDate ?? '').trim();
   const vendorBillAmount = parseAmount(raw?.vendorBillAmount);
   const vendorBillAttachmentName = String(raw?.vendorBillAttachmentName ?? '').trim().slice(0, 240);
+  const vendorBillStoragePath = String(raw?.vendorBillStoragePath ?? '').trim().slice(0, 300);
+  const vendorBillFileSize = Number(raw?.vendorBillFileSize || 0);
+
   if (entryType === 'Vendor Billing / Direct Purchase') {
     if (!vendorInvoiceNumber) errors.vendorInvoiceNumber = 'Vendor invoice number is required';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(vendorInvoiceDate) || Number.isNaN(Date.parse(vendorInvoiceDate))) {
@@ -84,12 +102,16 @@ export function validateStorePurchase(raw, allowedVendors = APPROVED_VENDOR_NAME
     if (!Number.isFinite(vendorBillAmount) || vendorBillAmount <= 0) {
       errors.vendorBillAmount = 'Enter bill amount';
     }
-    if (!vendorBillAttachmentName) errors.vendorBillAttachmentName = 'Attach vendor bill';
+    if (!vendorBillAttachmentName) {
+      errors.vendorBillAttachmentName = 'Attach vendor bill';
+    }
   }
   value.vendorInvoiceNumber = vendorInvoiceNumber;
   value.vendorInvoiceDate = vendorInvoiceDate;
   value.vendorBillAmount = Number.isFinite(vendorBillAmount) && vendorBillAmount > 0 ? vendorBillAmount : null;
   value.vendorBillAttachmentName = vendorBillAttachmentName;
+  value.vendorBillStoragePath = vendorBillStoragePath;
+  value.vendorBillFileSize = vendorBillFileSize;
 
   const fromLocation = String(raw?.fromLocation ?? '').trim();
   const toLocation = String(raw?.toLocation ?? '').trim();
@@ -117,10 +139,16 @@ export function validateStorePurchase(raw, allowedVendors = APPROVED_VENDOR_NAME
   value.requestedBy = requestedBy;
 
   const proofAttachmentName = String(raw?.proofAttachmentName ?? '').trim().slice(0, 240);
+  const proofStoragePath = String(raw?.proofStoragePath ?? '').trim().slice(0, 300);
+  const proofFileSize = Number(raw?.proofFileSize || 0);
+
   if (entryType !== 'Vendor Billing / Direct Purchase' && !proofAttachmentName) {
     errors.proofAttachmentName = 'Attach proof';
   }
   value.proofAttachmentName = proofAttachmentName;
+  value.proofStoragePath = proofStoragePath;
+  value.proofFileSize = proofFileSize;
+
 
   const date = String(raw?.date ?? '').trim();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date))) {
