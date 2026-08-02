@@ -23,12 +23,18 @@
 .error { max-width: 1400px; margin: 0 auto 18px; padding: 12px; color: #ff7777; border: 1px solid #9d3030; border-radius: 8px; }
 .empty { padding: 24px; color: #a9aec5; }
 
+/* Clickable bill row */
+.clickableRow { cursor: pointer; }
+.clickableRow:hover { background: rgba(212, 175, 55, 0.05); }
+.clickableRow:focus-visible { outline: 2px solid #d4af37; outline-offset: -2px; }
+.clickableRow:has(button:focus-visible) { outline: none; }
+.rowAction { }
+
 /* Clickable vendor / bill number */
 .detailLink {
   background: transparent;
   border: none;
   color: #d4af37;
-  text-decoration: underline;
   cursor: pointer;
   font-size: 13px;
   padding: 0;
@@ -40,12 +46,18 @@
   background: transparent;
   border: none;
   color: #d4af37;
-  text-decoration: underline;
   cursor: pointer;
   font-size: 13px;
   padding: 0;
 }
 .attachmentLink:hover { color: #fff; }
+
+.receiptActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 18px;
+}
 
 /* Read-only View Entry modal */
 .modalOverlay {
@@ -181,9 +193,60 @@
 }
 .modalBtn:hover { background: #e3c164; }
 
+.statusSection {
+  margin-top: 20px;
+  background: rgba(216, 178, 66, 0.06);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+
 @media (max-width: 700px) {
   .detailColumns { grid-template-columns: 1fr; }
   .detailFieldsGrid { grid-template-columns: 1fr; }
   .detailMeta { grid-template-columns: 1fr; }
   .modal { padding: 18px; }
+}
+
+/* ── Print: only the receipt inside the open View Entry modal ── */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  .filters,
+  .header,
+  .tableWrap {
+    display: none !important;
+  }
+
+  .modalOverlay {
+    position: static !important;
+    background: #fff !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .modal {
+    max-width: 100% !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    color: #000 !important;
+    text-align: left !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+
+  .modalHeader,
+  .modalActions,
+  .statusSection {
+    display: none !important;
+  }
 }
