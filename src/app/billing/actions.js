@@ -126,20 +126,42 @@ export async function getVendorBillDetail(billId) {
     return data.signedUrl;
   };
 
-  const primaryAttachment = payload.vendorBillStoragePath
-    ? {
-        name: payload.vendorBillAttachmentName || bill.attachment_name || 'Attachment',
-        signedUrl: await makeSigned(payload.vendorBillStoragePath),
-      }
-    : null;
+  const hasPrimaryStoragePath = Boolean(payload.vendorBillStoragePath);
+  let primaryAttachment = null;
+  if (hasPrimaryStoragePath) {
+    primaryAttachment = {
+      name: payload.vendorBillAttachmentName || bill.attachment_name || 'Attachment',
+      available: true,
+      predatesStorage: false,
+      signedUrl: await makeSigned(payload.vendorBillStoragePath),
+    };
+  } else if (payload.vendorBillAttachmentName || bill.attachment_name) {
+    primaryAttachment = {
+      name: payload.vendorBillAttachmentName || bill.attachment_name,
+      available: false,
+      predatesStorage: !Object.prototype.hasOwnProperty.call(payload, 'vendorBillStoragePath'),
+      signedUrl: null,
+    };
+  }
 
-  const secondaryAttachment =
-    payload.proofStoragePath && payload.proofAttachmentName
-      ? {
-          name: payload.proofAttachmentName,
-          signedUrl: await makeSigned(payload.proofStoragePath),
-        }
-      : null;
+  const hasSecondaryStoragePath =
+    Boolean(payload.proofStoragePath) && Boolean(payload.proofAttachmentName);
+  let secondaryAttachment = null;
+  if (hasSecondaryStoragePath) {
+    secondaryAttachment = {
+      name: payload.proofAttachmentName,
+      available: true,
+      predatesStorage: false,
+      signedUrl: await makeSigned(payload.proofStoragePath),
+    };
+  } else if (payload.proofAttachmentName) {
+    secondaryAttachment = {
+      name: payload.proofAttachmentName,
+      available: false,
+      predatesStorage: !Object.prototype.hasOwnProperty.call(payload, 'proofAttachmentName'),
+      signedUrl: null,
+    };
+  }
 
   const paidAmount = (payments ?? []).reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
@@ -207,7 +229,7 @@ export async function getBillAttachmentSignedUrl(billId) {
   }
 
   if (!storagePath) {
-    return { ok: false, error: 'No stored binary attachment path associated with this bill.' };
+    return { ok: false, error: 'No stored binary attachment path associated with this bill.', available: false };
   }
 
   const { data, error: signedError } = await supabase.storage

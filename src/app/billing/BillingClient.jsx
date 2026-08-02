@@ -51,6 +51,14 @@ function Field({ label, value, mono }) {
 
 function AttachmentLink({ attachment, onClick }) {
   if (!attachment) return <span className={styles.detailMuted}>—</span>;
+
+  if (!attachment.available) {
+    const message = attachment.predatesStorage
+      ? 'This entry was created before attachment storage was enabled.'
+      : 'Attachment not available for this entry.';
+    return <span className={styles.detailMuted}>{message}</span>;
+  }
+
   return (
     <button type="button" className={styles.attachmentLink} onClick={() => onClick(attachment)}>
       📎 {attachment.name || 'Attachment'}
@@ -96,8 +104,12 @@ export default function BillingClient({ bills }) {
   const handlePrimaryView = async (billId) => {
     try {
       const res = await getBillAttachmentSignedUrl(billId);
-      if (!res.ok) setError(res.error);
-      else window.open(res.signedUrl, '_blank', 'noopener,noreferrer');
+      if (!res.ok) {
+        if (res.available === false) return;
+        setError(res.error);
+      } else {
+        window.open(res.signedUrl, '_blank', 'noopener,noreferrer');
+      }
     } catch {
       setError('Could not open attachment.');
     }
