@@ -39,6 +39,7 @@ ON CONFLICT (id) DO UPDATE SET
   ];
 
 -- RLS Policy 1: Allow authenticated users to upload into their user folder
+DROP POLICY IF EXISTS "Users can upload store purchase attachments to their folder" ON storage.objects;
 CREATE POLICY "Users can upload store purchase attachments to their folder"
 ON storage.objects FOR INSERT TO authenticated
 WITH CHECK (
@@ -47,6 +48,7 @@ WITH CHECK (
 );
 
 -- RLS Policy 2: Allow authenticated users to view their own uploads, or Admin/Accounts to view any file
+DROP POLICY IF EXISTS "Authorized users can read store purchase attachments" ON storage.objects;
 CREATE POLICY "Authorized users can read store purchase attachments"
 ON storage.objects FOR SELECT TO authenticated
 USING (
@@ -60,9 +62,11 @@ USING (
 );
 
 -- RLS Policy 3: Allow users to delete their own uploads (used for cleanup)
+DROP POLICY IF EXISTS "Users can delete their own store purchase attachments" ON storage.objects;
 CREATE POLICY "Users can delete their own store purchase attachments"
 ON storage.objects FOR DELETE TO authenticated
 USING (
   bucket_id = 'store-purchase-attachments' AND
   (storage.foldername(name))[1] = auth.uid()::text
 );
+
