@@ -125,6 +125,10 @@ export default function BillingClient({ bills }) {
     });
   };
 
+  const attachments = [];
+  if (detail?.primaryAttachment) attachments.push({ label: 'Primary Attachment', att: detail.primaryAttachment });
+  if (detail?.secondaryAttachment) attachments.push({ label: 'Secondary Attachment', att: detail.secondaryAttachment });
+
   return (
     <>
       {error && <div className={styles.error} role="alert">{error}</div>}
