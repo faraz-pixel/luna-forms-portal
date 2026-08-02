@@ -7,26 +7,9 @@ import {
   getBillAttachmentSignedUrl,
   getVendorBillDetail,
 } from './actions';
+import StockInwardReceipt from '@/components/StockInwardReceipt';
 import { formatDate } from '@/lib/date';
 import styles from './page.module.css';
-
-function money(value) {
-  return Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
-}
-
-function money2(value) {
-  return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function formatDateTime(value) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString('en-US', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: 'numeric', minute: '2-digit', hour12: true,
-  });
-}
 
 function DatePicker({ value, onChange, label }) {
   const inputRef = useRef(null);
@@ -40,30 +23,12 @@ function DatePicker({ value, onChange, label }) {
   );
 }
 
-function Field({ label, value, mono }) {
-  return (
-    <div className={styles.detailField}>
-      <span className={styles.detailLabel}>{label}</span>
-      <span className={`${styles.detailValue} ${mono ? styles.detailMono : ''}`}>{value || '—'}</span>
-    </div>
-  );
+function money(value) {
+  return Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
 
-function AttachmentLink({ attachment, onClick }) {
-  if (!attachment) return <span className={styles.detailMuted}>—</span>;
-
-  if (!attachment.available) {
-    const message = attachment.predatesStorage
-      ? 'This entry was created before attachment storage was enabled.'
-      : 'Attachment not available for this entry.';
-    return <span className={styles.detailMuted}>{message}</span>;
-  }
-
-  return (
-    <button type="button" className={styles.attachmentLink} onClick={() => onClick(attachment)}>
-      📎 {attachment.name || 'Attachment'}
-    </button>
-  );
+function money2(value) {
+  return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 export default function BillingClient({ bills }) {
@@ -105,13 +70,38 @@ export default function BillingClient({ bills }) {
     try {
       const res = await getBillAttachmentSignedUrl(billId);
       if (!res.ok) {
-        if (res.available === false) return;
-        setError(res.error);
+        if (res.available === false) setError('Attachment not available for this entry.');
+        else setError(res.error);
       } else {
         window.open(res.signedUrl, '_blank', 'noopener,noreferrer');
       }
     } catch {
       setError('Could not open attachment.');
+    }
+  };
+
+  const handleReprint = () => {
+    window.print();
+  };
+
+  const handleDownloadReceipt = async () => {
+    const el = document.getElementById('billingReceiptCapture');
+    if (!el) return;
+    Object.assign(el.style, {
+      position: 'fixed', left: '-9999px', top: '0',
+      display: 'block', width: '700px', zIndex: '-1',
+    });
+    try {
+      const { default: html2canvas } = await import('html2canvas');
+      const canvas = await html2canvas(el, { backgroundColor: '#ffffff', scale: 2, useCORS: true });
+      const link = document.createElement('a');
+      link.download = `Receipt_${detail?.refNumber || 'bill'}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error('[billing] receipt export failed', err);
+    } finally {
+      el.style.display = 'none';
     }
   };
 
@@ -145,7 +135,6 @@ export default function BillingClient({ bills }) {
             <tr>
               <th>Vendor</th>
               <th>Bill No.</th>
-              <th>Attachment</th>
               <th>Invoice Date</th>
               <th>Due Date</th>
               <th>Amount</th>
@@ -156,37 +145,27 @@ export default function BillingClient({ bills }) {
           </thead>
           <tbody>
             {bills.map((bill) => (
-              <tr key={bill.id}>
-                <td>
-                  <button type="button" className={styles.detailLink} onClick={() => openDetail(bill.id)}>
-                    {bill.vendor_name}
-                  </button>
-                </td>
-                <td>
-                  <button type="button" className={styles.detailLink} onClick={() => openDetail(bill.id)}>
-                    {bill.bill_number}
-                  </button>
-                </td>
-                <td>
-                  {bill.attachment_name ? (
-                    <button
-                      type="button"
-                      onClick={() => handlePrimaryView(bill.id)}
-                      disabled={busy === `file:${bill.id}`}
-                      className={styles.attachmentLink}
-                    >
-                      {busy === `file:${bill.id}` ? 'Loading...' : `📎 ${bill.attachment_name}`}
-                    </button>
-                  ) : (
-                    '—'
-                  )}
-                </td>
+              <tr
+                key={bill.id}
+                className={styles.clickableRow}
+                onClick={() => openDetail(bill.id)}
+                tabIndex={0}
+                role="link"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openDetail(bill.id);
+                  }
+                }}
+              >
+                <td>{bill.vendor_name}</td>
+                <td>{bill.bill_number}</td>
                 <td>{formatDate(bill.invoice_date)}</td>
                 <td>{bill.due_date ? formatDate(bill.due_date) : 'Hidden until endorsed'}</td>
                 <td>{money(bill.bill_amount)}</td>
                 <td>{money(bill.paid_amount)}</td>
                 <td>{money(bill.balance)}</td>
-                <td>
+                <td className={styles.rowAction} onClick={(e) => e.stopPropagation()}>
                   {bill.credit_terms_status !== 'endorsed' ? (
                     <div className={styles.termAction}>
                       <input
@@ -226,116 +205,102 @@ export default function BillingClient({ bills }) {
       {/* Read-only View Entry modal */}
       {detail && (
         <div className={styles.modalOverlay} onClick={() => setDetail(null)}>
-          <div className={styles.modal} role="dialog" aria-modal="true" aria-label="Entry details" onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
+          <div className={styles.modal} role="dialog" aria-modal="true" aria-label="Stock Inward Receipt" onClick={(e) => e.stopPropagation()}>
+            <div className={`${styles.modalHeader} noPrint`}>
               <div>
-                <h2>Entry Details</h2>
+                <h2>Receipt · {detail.vendorName || detail.vendorNameFromPayload}</h2>
                 <span className={styles.modalSub}>
-                  {detail.vendorName} · {detail.invoiceNumber}
+                  {detail.vendorNameFromPayload} · {detail.invoiceNumber}
                 </span>
               </div>
               <button type="button" className={styles.modalClose} onClick={() => setDetail(null)} aria-label="Close">&times;</button>
             </div>
 
             {loadingDetail ? (
-              <p className={styles.empty}>Loading…</p>
+              <p className={`${styles.empty} noPrint`}>Loading…</p>
             ) : (
               <>
-                {/* Top reference bar */}
-                <div className={styles.detailMeta}>
-                  <Field label="Store / Stock Ref" value={detail.refNumber} mono />
-                  <Field label="Invoice Date" value={formatDate(detail.invoiceDate)} />
+                <div className={`${styles.receiptActions} noPrint`}>
+                  <button type="button" className={styles.modalBtn} onClick={handleReprint}>
+                    Reprint
+                  </button>
+                  <button type="button" className={styles.modalBtn} onClick={handleDownloadReceipt}>
+                    Download
+                  </button>
+                  <button type="button" className={styles.modalBtn} onClick={() => setDetail(null)}>
+                    Close
+                  </button>
                 </div>
 
-                {/* Two-column sections */}
-                <div className={styles.detailColumns}>
-                  <div className={styles.detailSection}>
-                    <h3 className={styles.detailSectionTitle}>Vendor Details</h3>
-                    <Field label="Vendor Name" value={detail.vendorNameFromPayload} />
-                    <Field label="Vendor Invoice Number" value={detail.invoiceNumber} mono />
-                    <Field label="Bill Amount" value={money2(detail.billAmount)} />
-                    <Field label="Submitted By" value={detail.submittedBy} />
-                  </div>
-                  <div className={styles.detailSection}>
-                    <h3 className={styles.detailSectionTitle}>Transaction Details</h3>
-                    <Field label="Entry Type" value={detail.entryType} />
-                    <Field label="Record Type" value={detail.recordType} />
-                    <Field label="Location" value={detail.location} />
-                  </div>
-                </div>
+                <StockInwardReceipt
+                  refNumber={detail.refNumber}
+                  date={detail.invoiceDate}
+                  submittedBy={detail.submittedBy}
+                  vendorName={detail.vendorNameFromPayload}
+                  vendorInvoiceNumber={detail.invoiceNumber}
+                  billAmount={detail.billAmount}
+                  entryType={detail.entryType}
+                  transactionType={detail.recordType}
+                  location={detail.location}
+                  products={detail.products}
+                  remarks={detail.remarks}
+                />
 
-                <div className={styles.detailColumns}>
-                  <div className={styles.detailSection}>
-                    <h3 className={styles.detailSectionTitle}>Submission</h3>
-                    <Field label="Submitted At" value={formatDateTime(detail.submittedAt)} />
-                    <Field label="Reference" value={detail.refNumber} mono />
-                  </div>
-                  <div className={styles.detailSection}>
-                    <h3 className={styles.detailSectionTitle}>Endorsement & Payment</h3>
-                    <Field
-                      label="Endorsement Status"
-                      value={detail.creditTermsStatus === 'endorsed'
-                        ? `Endorsed${detail.creditTermsDays ? ` (${detail.creditTermsDays} days)` : ''}`
-                        : 'Pending'}
-                    />
-                    <Field label="Due Date" value={detail.dueDate ? formatDate(detail.dueDate) : ''} />
-                    <Field label="Paid Amount" value={money2(detail.paidAmount)} />
-                    <Field label="Balance" value={money2(detail.balance)} />
-                  </div>
-                </div>
-
-                {/* Products */}
-                <div className={styles.detailSection}>
-                  <h3 className={styles.detailSectionTitle}>Product / Item Breakup</h3>
-                  {detail.products.length > 0 ? (
-                    <table className={styles.detailTable}>
-                      <thead>
-                        <tr><th>#</th><th>Product</th><th>Unit</th><th>Quantity</th></tr>
-                      </thead>
-                      <tbody>
-                        {detail.products.map((p, i) => (
-                          <tr key={i}>
-                            <td>{i + 1}</td>
-                            <td>{p.name}</td>
-                            <td>{p.unit}</td>
-                            <td>{p.count}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  ) : (
-                    <p className={styles.detailMuted}>No product data.</p>
-                  )}
-                </div>
-
-                {/* Remarks */}
-                {detail.remarks && (
-                  <div className={styles.detailSection}>
-                    <h3 className={styles.detailSectionTitle}>Remarks</h3>
-                    <p className={styles.detailRemarks}>{detail.remarks}</p>
-                  </div>
-                )}
-
-                {/* Attachments */}
-                <div className={styles.detailSection}>
-                  <h3 className={styles.detailSectionTitle}>Attachments</h3>
+                {/* Read-only endorsement & payment status */}
+                <div className={`${styles.statusSection} noPrint`}>
+                  <h3 className={styles.detailSectionTitle}>Endorsement &amp; Payment</h3>
                   <div className={styles.detailFieldsGrid}>
                     <div>
-                      <span className={styles.detailLabel}>Primary Attachment</span>
-                      <AttachmentLink attachment={detail.primaryAttachment} onClick={handleViewAttachment} />
+                      <span className={styles.detailLabel}>Endorsement Status</span>
+                      <div className={styles.detailValue}>
+                        {detail.creditTermsStatus === 'endorsed'
+                          ? `Endorsed${detail.creditTermsDays ? ` (${detail.creditTermsDays} days)` : ''}`
+                          : 'Pending'}
+                      </div>
                     </div>
                     <div>
-                      <span className={styles.detailLabel}>Secondary Attachment</span>
-                      <AttachmentLink attachment={detail.secondaryAttachment} onClick={handleViewAttachment} />
+                      <span className={styles.detailLabel}>Due Date</span>
+                      <div className={styles.detailValue}>{detail.dueDate ? formatDate(detail.dueDate) : '—'}</div>
+                    </div>
+                    <div>
+                      <span className={styles.detailLabel}>Paid Amount</span>
+                      <div className={styles.detailValue}>{money2(detail.paidAmount)}</div>
+                    </div>
+                    <div>
+                      <span className={styles.detailLabel}>Balance</span>
+                      <div className={styles.detailValue}>{money2(detail.balance)}</div>
                     </div>
                   </div>
-                </div>
 
-                {/* Payment history */}
-                {detail.payments && detail.payments.length > 0 && (
-                  <div className={styles.detailSection}>
-                    <h3 className={styles.detailSectionTitle}>Payment History</h3>
-                    <table className={styles.detailTable}>
+                  {attachments.length > 0 && (
+                    <div className={`${styles.detailFieldsGrid}`} style={{ marginTop: '16px' }}>
+                      {attachments.map(({ label, att }) => (
+                        <div key={label}>
+                          <span className={styles.detailLabel}>{label}</span>
+                          <div className={styles.detailValue}>
+                            {att.available ? (
+                              <button
+                                type="button"
+                                className={styles.attachmentLink}
+                                onClick={() => handleViewAttachment(att)}
+                              >
+                                📎 {att.name || 'View'}
+                              </button>
+                            ) : (
+                              <span className={styles.detailMuted}>
+                                {att.predatesStorage
+                                  ? 'This entry was created before attachment storage was enabled.'
+                                  : 'Attachment not available for this entry.'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {detail.payments && detail.payments.length > 0 && (
+                    <table className={styles.detailTable} style={{ marginTop: '16px' }}>
                       <thead>
                         <tr><th>Date</th><th>Amount</th><th>Method</th><th>Reference</th></tr>
                       </thead>
@@ -350,15 +315,30 @@ export default function BillingClient({ bills }) {
                         ))}
                       </tbody>
                     </table>
-                  </div>
-                )}
-
-                <div className={styles.modalActions}>
-                  <button type="button" className={styles.modalBtn} onClick={() => setDetail(null)}>Close</button>
+                  )}
                 </div>
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Hidden receipt copy used only for PNG download */}
+      {detail && (
+        <div id="billingReceiptCapture" style={{ display: 'none' }}>
+          <StockInwardReceipt
+            refNumber={detail.refNumber}
+            date={detail.invoiceDate}
+            submittedBy={detail.submittedBy}
+            vendorName={detail.vendorNameFromPayload}
+            vendorInvoiceNumber={detail.invoiceNumber}
+            billAmount={detail.billAmount}
+            entryType={detail.entryType}
+            transactionType={detail.recordType}
+            location={detail.location}
+            products={detail.products}
+            remarks={detail.remarks}
+          />
         </div>
       )}
     </>

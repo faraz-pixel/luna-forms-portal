@@ -129,11 +129,12 @@ export async function getVendorBillDetail(billId) {
   const hasPrimaryStoragePath = Boolean(payload.vendorBillStoragePath);
   let primaryAttachment = null;
   if (hasPrimaryStoragePath) {
+    const primarySignedUrl = await makeSigned(payload.vendorBillStoragePath);
     primaryAttachment = {
       name: payload.vendorBillAttachmentName || bill.attachment_name || 'Attachment',
-      available: true,
+      available: Boolean(primarySignedUrl),
       predatesStorage: false,
-      signedUrl: await makeSigned(payload.vendorBillStoragePath),
+      signedUrl: primarySignedUrl,
     };
   } else if (payload.vendorBillAttachmentName || bill.attachment_name) {
     primaryAttachment = {
@@ -148,11 +149,12 @@ export async function getVendorBillDetail(billId) {
     Boolean(payload.proofStoragePath) && Boolean(payload.proofAttachmentName);
   let secondaryAttachment = null;
   if (hasSecondaryStoragePath) {
+    const secondarySignedUrl = await makeSigned(payload.proofStoragePath);
     secondaryAttachment = {
       name: payload.proofAttachmentName,
-      available: true,
+      available: Boolean(secondarySignedUrl),
       predatesStorage: false,
-      signedUrl: await makeSigned(payload.proofStoragePath),
+      signedUrl: secondarySignedUrl,
     };
   } else if (payload.proofAttachmentName) {
     secondaryAttachment = {

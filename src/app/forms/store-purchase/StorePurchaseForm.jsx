@@ -16,6 +16,7 @@ import {
   isAllowedFileExtension,
 } from '@/lib/forms/store-purchase';
 import { formatAmount, parseAmount } from '@/lib/forms/amount';
+import StockInwardReceipt from '@/components/StockInwardReceipt';
 import styles from './page.module.css';
 
 
@@ -626,99 +627,22 @@ export default function StorePurchaseForm({ userEmail, initialVendors = [] }) {
     return Number.isFinite(n) ? n.toLocaleString('en-US') : value || '—';
   };
 
-  // Shared receipt document renderer. Used for both the on-screen preview and the
+// Shared receipt document renderer. Used for both the on-screen preview and the
   // hidden PNG-export copy, and it is the only element that appears in print output.
   const receiptDoc = (
-    <div className={styles.receiptDoc}>
-      <div className={styles.receiptHeader}>
-        <div className={styles.receiptBrand}>☕ Coffee Cartel</div>
-        <div className={styles.receiptTitle}>Stock Inward Receipt</div>
-      </div>
-
-      <div className={styles.receiptMeta}>
-        <div className={styles.receiptMetaItem}>
-          <span>Store / Stock Ref:</span>
-          <strong>{receipt?.refNumber ?? ''}</strong>
-        </div>
-        <div className={styles.receiptMetaItem}>
-          <span>Date:</span>
-          <strong>{formatDate(receiptData.date)}</strong>
-        </div>
-      </div>
-
-      <div className={styles.receiptColumns}>
-        <div className={styles.receiptSection}>
-          <div className={styles.receiptSectionTitle}>Vendor Details</div>
-          <div className={styles.receiptField}>
-            <label>Vendor Name</label>
-            <p>{receiptData.vendorName || '—'}</p>
-          </div>
-          <div className={styles.receiptField}>
-            <label>Vendor Invoice Number</label>
-            <p>{receiptData.vendorInvoiceNumber || '—'}</p>
-          </div>
-          <div className={styles.receiptField}>
-            <label>Bill Amount</label>
-            <p>{formatAmount(receiptData.vendorBillAmount)}</p>
-          </div>
-          <div className={styles.receiptField}>
-            <label>Submitted By</label>
-            <p>{userEmail}</p>
-          </div>
-        </div>
-
-        <div className={styles.receiptSection}>
-          <div className={styles.receiptSectionTitle}>Transaction Details</div>
-          <div className={styles.receiptField}>
-            <label>Entry Type</label>
-            <p>{receiptData.entryType || '—'}</p>
-          </div>
-          <div className={styles.receiptField}>
-            <label>Record Type</label>
-            <p>Inward</p>
-          </div>
-          <div className={styles.receiptField}>
-            <label>Location</label>
-            <p>{receiptData.location || '—'}</p>
-          </div>
-          <div className={styles.receiptField}>
-            <label>Date</label>
-            <p>{formatDate(receiptData.date)}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.receiptSectionTitle}>Products</div>
-      <table className={styles.receiptTable}>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Product</th>
-            <th>Unit</th>
-            <th>Count</th>
-          </tr>
-        </thead>
-        <tbody>
-          {receiptData.products.map((p, i) => (
-            <tr key={i}>
-              <td>{i + 1}</td>
-              <td>{p.name}</td>
-              <td>{p.unit}</td>
-              <td>{p.count}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {receiptData.remarks && (
-        <div className={styles.receiptRemarksBlock}>
-          <div className={styles.receiptSectionTitle}>Remarks</div>
-          <div className={styles.receiptRemarks}>{receiptData.remarks}</div>
-        </div>
-      )}
-
-      <div className={styles.receiptFooter}>Luna Forms Portal • Coffee Cartel</div>
-    </div>
+    <StockInwardReceipt
+      refNumber={receipt?.refNumber ?? ''}
+      date={receiptData.date}
+      submittedBy={userEmail}
+      vendorName={receiptData.vendorName}
+      vendorInvoiceNumber={receiptData.vendorInvoiceNumber}
+      billAmount={receiptData.vendorBillAmount}
+      entryType={receiptData.entryType}
+      transactionType="Inward"
+      location={receiptData.location}
+      products={receiptData.products}
+      remarks={receiptData.remarks}
+    />
   );
 
   return (
